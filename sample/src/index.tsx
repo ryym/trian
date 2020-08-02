@@ -1,6 +1,14 @@
 import * as React from 'react';
 import { render } from 'react-dom';
-import { createStore, createBlock, TrianProvider, useBlock, useDispatch, Thunk } from '../..';
+import {
+  createStore,
+  createDispatch,
+  createBlock,
+  TrianProvider,
+  useBlock,
+  useDispatch,
+  Thunk,
+} from '../..';
 
 const { useEffect } = React;
 
@@ -11,7 +19,8 @@ const Count = createBlock({
   autoClear: true,
 });
 
-const Increment = (): Thunk => ({ update }) => {
+const Increment = (): Thunk<void, string> => ({ update }, ctx) => {
+  console.log('increment with context:', ctx);
   update(Count, (cnt) => cnt + 1);
 };
 
@@ -100,9 +109,11 @@ function Footer() {
   );
 }
 
+const customDispatch = createDispatch(store, 'samle-context');
+
 function App() {
   return (
-    <TrianProvider store={store}>
+    <TrianProvider store={store} dispatch={customDispatch}>
       <Routes />
     </TrianProvider>
   );

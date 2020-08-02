@@ -9,25 +9,25 @@ import {
 } from 'react';
 import { Block, Store, Dispatch, Unsubscribe, createDispatch } from './index';
 
-export interface TrianContextValue {
+export interface TrianContextValue<Ctx> {
   readonly store: Store;
-  readonly dispatch: Dispatch;
+  readonly dispatch: Dispatch<Ctx>;
 }
 
-const TrianContext = createContext<TrianContextValue | null>(null);
+const TrianContext = createContext<TrianContextValue<any> | null>(null);
 
 export interface TrianProviderProps {
   readonly store: Store;
-  readonly dispatch?: Dispatch;
+  readonly dispatch?: Dispatch<any>;
   readonly children?: ReactNode;
 }
 
 export const TrianProvider = ({ store, dispatch, children }: TrianProviderProps) => {
-  dispatch = dispatch ?? createDispatch(store);
+  dispatch = dispatch ?? createDispatch(store, undefined);
   return createElement(TrianContext.Provider, { value: { store, dispatch } }, children);
 };
 
-export const useTrianContext = (): TrianContextValue => {
+export const useTrianContext = <Ctx>(): TrianContextValue<Ctx> => {
   const ctx = useContext(TrianContext);
   if (ctx == null) {
     throw new Error('[trian] Store not found. Please wrap your component tree by TrianProvider');
@@ -61,7 +61,7 @@ export const useBlock = <T>(block: Block<T>): T => {
   return value;
 };
 
-export const useDispatch = (): Dispatch => {
-  const { dispatch } = useTrianContext();
+export const useDispatch = <Ctx = any>(): Dispatch<Ctx> => {
+  const { dispatch } = useTrianContext<Ctx>();
   return dispatch;
 };
