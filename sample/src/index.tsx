@@ -1,6 +1,6 @@
 import * as React from 'react';
 import { render } from 'react-dom';
-import { createStore, createBlock, TrianProvider, useBlock, useDispatch, StoreAccess } from '../..';
+import { createStore, createBlock, TrianProvider, useBlock, useDispatch, Thunk } from '../..';
 
 const { useEffect } = React;
 
@@ -11,7 +11,7 @@ const Count = createBlock({
   autoClear: true,
 });
 
-const Increment = ({ update }: StoreAccess) => {
+const Increment = (): Thunk => ({ update }) => {
   update(Count, (cnt) => cnt + 1);
 };
 
@@ -21,7 +21,7 @@ const Route = createBlock({
   default: () => cleanHash(document.location.hash),
 });
 
-const SetRoute = ({ update }: StoreAccess, route: string) => {
+const SetRoute = (route: string): Thunk => ({ update }) => {
   update(Route, () => route);
 };
 

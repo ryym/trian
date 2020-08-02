@@ -77,10 +77,10 @@ export class Store {
 
 export const createDispatch = (store: Store): Dispatch => {
   function dispatch<As extends any[], R>(action: Action<As, R>, ...args: As): R {
-    return action(params, ...args);
+    return action(...args)(params, undefined);
   }
 
-  const params: StoreAccess = {
+  const params: ThunkParams = {
     update: store.updateValue,
     dispatch,
   };
@@ -92,13 +92,17 @@ export interface Dispatch {
   <As extends any[], R>(action: Action<As, R>, ...args: As): R;
 }
 
-export interface StoreAccess {
+export interface Action<Args extends any[], Result, Ctx = unknown> {
+  (...args: Args): Thunk<Result, Ctx>;
+}
+
+export interface ThunkParams {
   update<T>(block: Block<T>, update: UpdateValue<T>): void;
   dispatch<As extends any[], R>(action: Action<As, R>, ...args: As): R;
 }
 
-export interface Action<Args extends any[], Result> {
-  (acc: StoreAccess, ...args: Args): Result;
+export interface Thunk<Result = void, Ctx = unknown> {
+  (params: ThunkParams, context: Ctx): Result;
 }
 
 export const createStore = () => {
