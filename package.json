@@ -3,9 +3,13 @@
   "version": "0.0.0",
   "author": "ryym <ryym.64@gmail.com>",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/ryym/trian"
+  },
   "main": "index.js",
   "typings": "dist/types/index.d.ts",
-  "files": ["dist"],
+  "files": ["index.js", "dist"],
   "scripts": {
     "build": "npx tsc",
     "build:w": "npx tsc --watch",
