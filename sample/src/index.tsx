@@ -9,6 +9,7 @@ const store = createStore();
 const Count = createBlock({
   key: 'Count',
   default: 0,
+  autoClear: true,
 });
 
 const Increment = ({ update }: StoreAccess) => {
@@ -42,7 +43,7 @@ const useRouteListen = () => {
 function Routes() {
   useRouteListen();
   const route = useBlock(Route);
-  const pages = ['home', 'about'];
+  const pages = ['home', 'about', 'nocount'];
 
   return (
     <div>
@@ -58,6 +59,8 @@ function Routes() {
       <main>
         {route === 'home' && <Home />}
         {route === 'about' && <About />}
+        {route === 'nocount' && <h1>No count here</h1>}
+        {route !== 'nocount' && <Footer />}
       </main>
     </div>
   );
@@ -76,10 +79,11 @@ function Home() {
 }
 
 function About() {
+  const count = useBlock(Count);
   const dispatch = useDispatch();
   return (
     <div>
-      <h1>About</h1>
+      <h1>About {count}</h1>
       <button onClick={() => dispatch(Increment)}>Increment</button>
     </div>
   );
@@ -102,7 +106,6 @@ function App() {
   return (
     <TrianProvider store={store}>
       <Routes />
-      <Footer />
     </TrianProvider>
   );
 }
