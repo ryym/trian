@@ -7,7 +7,6 @@ const { useEffect } = React;
 const store = createStore();
 
 const Count = createBlock({
-  key: 'Count',
   default: 0,
   autoClear: true,
 });
@@ -19,7 +18,6 @@ const Increment = ({ update }: StoreAccess) => {
 const cleanHash = (hash: string): string => hash && hash.slice(1);
 
 const Route = createBlock({
-  key: 'Route',
   default: cleanHash(document.location.hash),
 });
 

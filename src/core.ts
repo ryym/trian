@@ -10,7 +10,6 @@ export type UpdateValue<T> = (value: T) => T;
 export type Unsubscribe = () => void;
 
 export interface BlockConfig<T> {
-  readonly key: string;
   readonly default: T;
 
   // If this is true, it lets the store clear the block state
@@ -19,12 +18,10 @@ export interface BlockConfig<T> {
 }
 
 export class Block<T> {
-  readonly key: string;
   readonly default: T;
   readonly autoClear: boolean;
 
   constructor(config: BlockConfig<T>) {
-    this.key = config.key;
     this.default = config.default;
     this.autoClear = config.autoClear || false;
   }
@@ -35,13 +32,13 @@ export const createBlock = <T>(config: BlockConfig<T>): Block<T> => {
 };
 
 export class Store {
-  private readonly states: Map<string, BlockState<any>> = new Map();
+  private readonly states: Map<Block<any>, BlockState<any>> = new Map();
 
   private getBlockState<T>(block: Block<T>): BlockState<T> {
-    let state = this.states.get(block.key);
+    let state = this.states.get(block);
     if (state == null) {
       state = { current: block.default, subscribers: [] };
-      this.states.set(block.key, state);
+      this.states.set(block, state);
     }
     return state;
   }
@@ -53,7 +50,7 @@ export class Store {
     const unsubscribe = () => {
       state.subscribers = state.subscribers.filter((sb) => sb !== setValue);
       if (block.autoClear && state.subscribers.length === 0) {
-        this.states.delete(block.key);
+        this.states.delete(block);
       }
     };
     return unsubscribe;
