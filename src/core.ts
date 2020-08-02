@@ -10,7 +10,9 @@ export type UpdateValue<T> = (value: T) => T;
 export type Unsubscribe = () => void;
 
 export interface BlockConfig<T> {
-  readonly default: T;
+  // In future we make it possible to specify the argument for this factory via TrianProvider.
+  // This enables us to create an initial value dynamically based on the rendering context.
+  readonly default: () => T;
 
   // If this is true, it lets the store clear the block state
   // when all components stop its subscription for this block.
@@ -18,7 +20,7 @@ export interface BlockConfig<T> {
 }
 
 export class Block<T> {
-  readonly default: T;
+  readonly default: () => T;
   readonly autoClear: boolean;
 
   constructor(config: BlockConfig<T>) {
@@ -37,7 +39,7 @@ export class Store {
   private getBlockState<T>(block: Block<T>): BlockState<T> {
     let state = this.states.get(block);
     if (state == null) {
-      state = { current: block.default, subscribers: [] };
+      state = { current: block.default(), subscribers: [] };
       this.states.set(block, state);
     }
     return state;
