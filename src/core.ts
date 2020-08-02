@@ -12,20 +12,26 @@ export type Unsubscribe = () => void;
 export interface BlockConfig<T> {
   readonly key: string;
   readonly default: T;
+
+  // If this is true, it lets the store clear the block state
+  // when all components stop its subscription for this block.
+  readonly autoClear?: boolean;
 }
 
 export class Block<T> {
   readonly key: string;
   readonly default: T;
+  readonly autoClear: boolean;
 
-  constructor(key: string, defaultValue: T) {
-    this.key = key;
-    this.default = defaultValue;
+  constructor(config: BlockConfig<T>) {
+    this.key = config.key;
+    this.default = config.default;
+    this.autoClear = config.autoClear || false;
   }
 }
 
-export const createBlock = <T>({ key, default: defaultValue }: BlockConfig<T>): Block<T> => {
-  return new Block(key, defaultValue);
+export const createBlock = <T>(config: BlockConfig<T>): Block<T> => {
+  return new Block(config);
 };
 
 export class Store {
@@ -43,9 +49,14 @@ export class Store {
   subscribe = <T>(block: Block<T>, setValue: SetValue<T>): Unsubscribe => {
     const state = this.getBlockState(block);
     state.subscribers.push(setValue);
-    return function unsubscribe() {
+
+    const unsubscribe = () => {
       state.subscribers = state.subscribers.filter((sb) => sb !== setValue);
+      if (block.autoClear && state.subscribers.length === 0) {
+        this.states.delete(block.key);
+      }
     };
+    return unsubscribe;
   };
 
   getValue = <T>(block: Block<T>): T => {
