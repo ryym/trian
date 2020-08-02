@@ -73,19 +73,20 @@ export class Store {
     const nextValue = updateValue(state.current);
     this.setValue(block, nextValue);
   };
-
-  dispatch = <As extends any[], R>(action: Action<As, R>, ...args: As): R => {
-    const access = this.getAccess();
-    return action(access, ...args);
-  };
-
-  getAccess = (): StoreAccess => {
-    return {
-      update: this.updateValue,
-      dispatch: this.dispatch,
-    };
-  };
 }
+
+export const createDispatch = (store: Store): Dispatch => {
+  function dispatch<As extends any[], R>(action: Action<As, R>, ...args: As): R {
+    return action(params, ...args);
+  }
+
+  const params: StoreAccess = {
+    update: store.updateValue,
+    dispatch,
+  };
+
+  return dispatch;
+};
 
 export interface Dispatch {
   <As extends any[], R>(action: Action<As, R>, ...args: As): R;

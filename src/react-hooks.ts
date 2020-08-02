@@ -7,29 +7,36 @@ import {
   createElement,
   ReactNode,
 } from 'react';
-import { Block, Store, Dispatch, Unsubscribe } from './index';
+import { Block, Store, Dispatch, Unsubscribe, createDispatch } from './index';
 
-const TrianContext = createContext<Store | null>(null);
+export interface TrianContextValue {
+  readonly store: Store;
+  readonly dispatch: Dispatch;
+}
+
+const TrianContext = createContext<TrianContextValue | null>(null);
 
 export interface TrianProviderProps {
   readonly store: Store;
+  readonly dispatch?: Dispatch;
   readonly children?: ReactNode;
 }
 
-export const TrianProvider = ({ store, children }: TrianProviderProps) => {
-  return createElement(TrianContext.Provider, { value: store }, children);
+export const TrianProvider = ({ store, dispatch, children }: TrianProviderProps) => {
+  dispatch = dispatch ?? createDispatch(store);
+  return createElement(TrianContext.Provider, { value: { store, dispatch } }, children);
 };
 
-export const useStore = (): Store => {
-  const store = useContext(TrianContext);
-  if (store == null) {
+export const useTrianContext = (): TrianContextValue => {
+  const ctx = useContext(TrianContext);
+  if (ctx == null) {
     throw new Error('[trian] Store not found. Please wrap your component tree by TrianProvider');
   }
-  return store;
+  return ctx;
 };
 
 export const useBlock = <T>(block: Block<T>): T => {
-  const store = useStore();
+  const { store } = useTrianContext();
   const unsubscribe = useRef<Unsubscribe | undefined>(undefined);
 
   const currentValue = store.getValue(block);
@@ -55,6 +62,6 @@ export const useBlock = <T>(block: Block<T>): T => {
 };
 
 export const useDispatch = (): Dispatch => {
-  const store = useStore();
-  return store.dispatch;
+  const { dispatch } = useTrianContext();
+  return dispatch;
 };
