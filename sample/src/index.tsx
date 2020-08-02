@@ -12,8 +12,6 @@ import {
 
 const { useEffect } = React;
 
-const store = createStore();
-
 const Count = createBlock({
   default: () => 0,
   autoClear: true,
@@ -27,7 +25,7 @@ const Increment = (): Thunk<void, string> => ({ update }, ctx) => {
 const cleanHash = (hash: string): string => hash && hash.slice(1);
 
 const Route = createBlock({
-  default: () => cleanHash(document.location.hash),
+  default: ({ route }: { route?: string } = {}) => route || '',
 });
 
 const SetRoute = (route: string): Thunk => ({ update }) => {
@@ -108,6 +106,10 @@ function Footer() {
     </footer>
   );
 }
+
+const store = createStore({
+  route: cleanHash(document.location.hash),
+});
 
 const customDispatch = createDispatch(store, 'samle-context');
 

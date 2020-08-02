@@ -9,37 +9,40 @@ export type UpdateValue<T> = (value: T) => T;
 
 export type Unsubscribe = () => void;
 
-export interface BlockConfig<T> {
-  // In future we make it possible to specify the argument for this factory via TrianProvider.
-  // This enables us to create an initial value dynamically based on the rendering context.
-  readonly default: () => T;
+export interface BlockConfig<T, Ctx> {
+  readonly default: (ctx?: Ctx) => T;
 
   // If this is true, it lets the store clear the block state
   // when all components stop its subscription for this block.
   readonly autoClear?: boolean;
 }
 
-export class Block<T> {
-  readonly default: () => T;
+export class Block<T, Ctx = any> {
+  readonly default: (ctx?: Ctx) => T;
   readonly autoClear: boolean;
 
-  constructor(config: BlockConfig<T>) {
+  constructor(config: BlockConfig<T, Ctx>) {
     this.default = config.default;
     this.autoClear = config.autoClear || false;
   }
 }
 
-export const createBlock = <T>(config: BlockConfig<T>): Block<T> => {
+export const createBlock = <T, Ctx>(config: BlockConfig<T, Ctx>): Block<T, Ctx> => {
   return new Block(config);
 };
 
-export class Store {
+export class Store<BlockCtx> {
   private readonly states: Map<Block<any>, BlockState<any>> = new Map();
+  private readonly blockContext: BlockCtx;
+
+  constructor(blockContext: BlockCtx) {
+    this.blockContext = blockContext;
+  }
 
   private getBlockState<T>(block: Block<T>): BlockState<T> {
     let state = this.states.get(block);
     if (state == null) {
-      state = { current: block.default(), subscribers: [] };
+      state = { current: block.default(this.blockContext), subscribers: [] };
       this.states.set(block, state);
     }
     return state;
@@ -75,7 +78,7 @@ export class Store {
   };
 }
 
-export const createDispatch = <Ctx>(store: Store, ctx: Ctx): Dispatch<Ctx> => {
+export const createDispatch = <Ctx>(store: Store<any>, ctx: Ctx): Dispatch<Ctx> => {
   function dispatch<As extends any[], R>(action: Action<As, R, Ctx>, ...args: As): R {
     return action(...args)(params, ctx);
   }
@@ -86,6 +89,10 @@ export const createDispatch = <Ctx>(store: Store, ctx: Ctx): Dispatch<Ctx> => {
   };
 
   return dispatch;
+};
+
+export const createStore = <BlockCtx = undefined>(blockCtx?: BlockCtx) => {
+  return new Store(blockCtx);
 };
 
 export interface Dispatch<Ctx> {
@@ -104,7 +111,3 @@ export interface ThunkParams<Ctx> {
 export interface Thunk<Result = void, Ctx = unknown> {
   (params: ThunkParams<Ctx>, context: Ctx): Result;
 }
-
-export const createStore = () => {
-  return new Store();
-};

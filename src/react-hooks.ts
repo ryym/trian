@@ -10,14 +10,14 @@ import {
 import { Block, Store, Dispatch, Unsubscribe, createDispatch } from './index';
 
 export interface TrianContextValue<Ctx> {
-  readonly store: Store;
+  readonly store: Store<any>;
   readonly dispatch: Dispatch<Ctx>;
 }
 
 const TrianContext = createContext<TrianContextValue<any> | null>(null);
 
 export interface TrianProviderProps {
-  readonly store: Store;
+  readonly store: Store<any>;
   readonly dispatch?: Dispatch<any>;
   readonly children?: ReactNode;
 }
