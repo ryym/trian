@@ -12,7 +12,7 @@ export type UpdateValue<T> = (value: T) => T;
 export type Unsubscribe = () => void;
 
 export class Store<BlockCtx> {
-  private readonly states: Map<Block<any>, BlockState<any>> = new Map();
+  private readonly blockStates: Map<Block<any>, BlockState<any>> = new Map();
   private readonly blockContext: BlockCtx;
 
   constructor(blockContext: BlockCtx) {
@@ -20,10 +20,10 @@ export class Store<BlockCtx> {
   }
 
   private getBlockState<T>(block: Block<T>): BlockState<T> {
-    let state = this.states.get(block);
+    let state = this.blockStates.get(block);
     if (state == null) {
       state = { current: block.default(this.blockContext), subscribers: [] };
-      this.states.set(block, state);
+      this.blockStates.set(block, state);
     }
     return state;
   }
@@ -35,7 +35,7 @@ export class Store<BlockCtx> {
     const unsubscribe = () => {
       state.subscribers = state.subscribers.filter((sb) => sb !== setValue);
       if (block.autoClear && state.subscribers.length === 0) {
-        this.states.delete(block);
+        this.blockStates.delete(block);
       }
     };
     return unsubscribe;
