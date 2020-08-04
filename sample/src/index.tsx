@@ -4,8 +4,9 @@ import {
   createStore,
   createDispatch,
   createBlock,
+  newSelector,
   TrianProvider,
-  useBlock,
+  useValue,
   useDispatch,
   Thunk,
 } from '../..';
@@ -15,6 +16,13 @@ const { useEffect } = React;
 const Count = createBlock({
   default: () => 0,
   autoClear: true,
+});
+
+const SuperCount = newSelector({
+  get: ({ get }) => {
+    console.log('compute super count');
+    return get(Count) + 100;
+  },
 });
 
 const Increment = (): Thunk<void, string> => ({ update }, ctx) => {
@@ -47,7 +55,7 @@ const useRouteListen = () => {
 
 function Routes() {
   useRouteListen();
-  const route = useBlock(Route);
+  const route = useValue(Route);
   const pages = ['home', 'about', 'nocount'];
 
   return (
@@ -72,7 +80,7 @@ function Routes() {
 }
 
 function Home() {
-  const count = useBlock(Count);
+  const count = useValue(Count);
   const dispatch = useDispatch();
   const asyncIncrement = () => {
     setTimeout(() => dispatch(Increment), 1000);
@@ -88,7 +96,7 @@ function Home() {
 }
 
 function About() {
-  const count = useBlock(Count);
+  const count = useValue(Count);
   const dispatch = useDispatch();
   return (
     <div>
@@ -99,10 +107,11 @@ function About() {
 }
 
 function Footer() {
-  const count = useBlock(Count);
+  const count = useValue(SuperCount);
   useEffect(() => {
-    console.log('count changed', count);
+    console.log('SuperCount changed', count);
   }, [count]);
+  console.log('render footer');
 
   return (
     <footer>

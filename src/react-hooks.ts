@@ -7,7 +7,7 @@ import {
   createElement,
   ReactNode,
 } from 'react';
-import { Block, Store, Dispatch, Unsubscribe, createDispatch } from './index';
+import { Block, Selector, Store, Dispatch, Unsubscribe, createDispatch } from './index';
 
 export interface TrianContextValue<Ctx> {
   readonly store: Store<any>;
@@ -42,7 +42,7 @@ const useNotifier = (): (() => void) => {
   };
 };
 
-export const useBlock = <T>(block: Block<T>): T => {
+export const useValue = <T>(key: Block<T> | Selector<T>): T => {
   const { store } = useTrianContext();
   const unsubscribe = useRef<Unsubscribe | undefined>(undefined);
   const notify = useNotifier();
@@ -58,12 +58,12 @@ export const useBlock = <T>(block: Block<T>): T => {
   // When 1 B's useBlock sets the current state as initial value
   // but when 2 it clears the current state if autoClear is set.
   if (unsubscribe.current === undefined) {
-    unsubscribe.current = store.onInvalidate(block, notify);
+    unsubscribe.current = store.onInvalidate(key, notify);
   }
 
   useEffect(() => unsubscribe.current, []);
 
-  return store.selectValue(block);
+  return store.selectValue(key);
 };
 
 export const useDispatch = <Ctx = any>(): Dispatch<Ctx> => {
