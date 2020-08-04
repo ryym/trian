@@ -74,11 +74,15 @@ function Routes() {
 function Home() {
   const count = useBlock(Count);
   const dispatch = useDispatch();
+  const asyncIncrement = () => {
+    setTimeout(() => dispatch(Increment), 1000);
+  };
   return (
     <div>
       <h1>Home</h1>
       <p>Hello, world! count: {count}</p>
       <button onClick={() => dispatch(Increment)}>Increment</button>
+      <button onClick={asyncIncrement}>Async Increment</button>
     </div>
   );
 }

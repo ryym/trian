@@ -35,12 +35,17 @@ export const useTrianContext = <Ctx>(): TrianContextValue<Ctx> => {
   return ctx;
 };
 
+const useNotifier = (): (() => void) => {
+  const [, update] = useState(0);
+  return function notify() {
+    update((n) => (n + 1) % 100);
+  };
+};
+
 export const useBlock = <T>(block: Block<T>): T => {
   const { store } = useTrianContext();
   const unsubscribe = useRef<Unsubscribe | undefined>(undefined);
-
-  const currentValue = store.getValue(block);
-  const [value, setValue] = useState(currentValue);
+  const notify = useNotifier();
 
   // We use useRef instead of useEffect for state change subscription
   // to support autoClear feature properly.
@@ -53,12 +58,12 @@ export const useBlock = <T>(block: Block<T>): T => {
   // When 1 B's useBlock sets the current state as initial value
   // but when 2 it clears the current state if autoClear is set.
   if (unsubscribe.current === undefined) {
-    unsubscribe.current = store.subscribe(block, setValue);
+    unsubscribe.current = store.onInvalidate(block, notify);
   }
 
   useEffect(() => unsubscribe.current, []);
 
-  return value;
+  return store.selectValue(block);
 };
 
 export const useDispatch = <Ctx = any>(): Dispatch<Ctx> => {
