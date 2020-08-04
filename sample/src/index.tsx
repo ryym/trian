@@ -130,17 +130,20 @@ const customDispatch = createDispatch(store, 'samle-context');
 const AsyncCount = selector.async({
   get: ({ get }) =>
     new Promise<number>((resolve) => {
-      let count = get(Count);
       setTimeout(() => {
-        count += get(Count);
-        resolve(count);
+        let count = get(Count);
+        // count += get(Count);
+        resolve(count * 2);
       }, 1000);
     }),
 });
 
-function UseAsync() {
+function UseAsync({ id }: any) {
   const result = useAsyncValue(AsyncCount);
-  console.log('UseAsync', result);
+  console.log('render', id, result);
+  if (result.status === 'Error') {
+    console.error(result.error);
+  }
   return (
     <div>
       <h1>Async</h1>
@@ -149,10 +152,21 @@ function UseAsync() {
   );
 }
 
+function UseAsyncWrapper() {
+  const [shown, setShown] = useState(false);
+  return (
+    <div>
+      <button onClick={() => setShown(!shown)}>Toggle</button>
+      {shown ? <UseAsync id="use-async2" /> : <div>hidden</div>}
+    </div>
+  );
+}
+
 function App() {
   return (
     <TrianProvider store={store} dispatch={customDispatch}>
-      <UseAsync />
+      <UseAsync id="use-async1" />
+      <UseAsyncWrapper />
       <Home />
       {/* <Routes /> */}
     </TrianProvider>

@@ -8,9 +8,14 @@ export interface BlockState<T> {
 
 export interface SelectorState<T> {
   cache: { value: T } | null;
-  updating: { depsChanged: boolean } | null;
+  updating: SelectorUpdating<T> | null;
   invalidationListeners: Array<() => void>;
   dependencies: Array<{ unsubscribe: Unsubscribe }>;
+}
+
+export interface SelectorUpdating<T> {
+  depsChanged: boolean;
+  valuePromise: Promise<T>;
 }
 
 export type SetValue<T> = (value: T) => void;
@@ -104,6 +109,12 @@ export class Store<BlockCtx> {
       return Promise.resolve(state.cache.value);
     }
 
+    if (state.updating != null) {
+      // If someone is already computing the async selector, just wait for it
+      // to avoid duplicate execution and possible race condition.
+      return await state.updating.valuePromise;
+    }
+
     state.dependencies.forEach((d) => d.unsubscribe());
     state.dependencies = [];
 
@@ -123,8 +134,10 @@ export class Store<BlockCtx> {
       return this.selectValue(key);
     };
 
-    state.updating = { depsChanged: false };
-    const value = await selector.run({ get });
+    const valuePromise = selector.run({ get });
+    state.updating = { depsChanged: false, valuePromise };
+    const value = await valuePromise;
+
     if (!state.updating.depsChanged) {
       state.cache = { value };
     }
