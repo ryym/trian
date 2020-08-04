@@ -42,8 +42,7 @@ export class Store<BlockCtx> {
     return state;
   }
 
-  // TODO: Rename method to onBlockValueChange.
-  subscribe = <T>(block: Block<T>, setValue: SetValue<T>): Unsubscribe => {
+  onBlockValueChange = <T>(block: Block<T>, setValue: SetValue<T>): Unsubscribe => {
     const state = this.getBlockState(block);
     state.subscribers.push(setValue);
 
@@ -54,11 +53,6 @@ export class Store<BlockCtx> {
       }
     };
     return unsubscribe;
-  };
-
-  // TODO: Remove method in favor of selectValue.
-  getValue = <T>(block: Block<T>): T => {
-    return this.getBlockState(block).current;
   };
 
   selectValue = <K extends StoreKey<any>>(key: K): GetResult<K> => {
@@ -149,7 +143,7 @@ export class Store<BlockCtx> {
 
   onInvalidate = (key: StoreKey<any>, handler: () => void): Unsubscribe => {
     if (key instanceof Block) {
-      return this.subscribe(key, handler);
+      return this.onBlockValueChange(key, handler);
     } else {
       const state = this.getSelectorState(key);
       state.invalidationHandlers.push(handler);
