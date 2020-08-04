@@ -3,8 +3,8 @@ import { render } from 'react-dom';
 import {
   createStore,
   createDispatch,
-  createBlock,
-  newSelector,
+  block,
+  selector,
   TrianProvider,
   useValue,
   useDispatch,
@@ -13,12 +13,12 @@ import {
 
 const { useEffect } = React;
 
-const Count = createBlock({
+const Count = block({
   default: () => 0,
   autoClear: true,
 });
 
-const SuperCount = newSelector({
+const SuperCount = selector({
   get: ({ get }) => {
     console.log('compute super count');
     return get(Count) + 100;
@@ -32,7 +32,7 @@ const Increment = (): Thunk<void, string> => ({ update }, ctx) => {
 
 const cleanHash = (hash: string): string => hash && hash.slice(1);
 
-const Route = createBlock({
+const Route = block({
   default: ({ route }: { route?: string } = {}) => route || '',
 });
 

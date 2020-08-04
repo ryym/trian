@@ -67,19 +67,18 @@ export interface NewSelector {
   async<T>(config: AsyncSelectorConfig<T>): AsyncSelector<T>;
 }
 
-const makeNewSelector = (): NewSelector => {
-  const createSelector = <T>(config: SelectorConfig<T>): Selector<T> => {
+const createSelectorCreator = (): NewSelector => {
+  const selector = (<T>(config: SelectorConfig<T>): Selector<T> => {
     return new Selector(config);
-  };
+  }) as NewSelector;
 
-  const createAsyncSelector = <T>(config: AsyncSelectorConfig<T>): AsyncSelector<T> => {
+  const asyncSelector = <T>(config: AsyncSelectorConfig<T>): AsyncSelector<T> => {
     return new AsyncSelector(config);
   };
 
-  const newSelector = createSelector as NewSelector;
-  newSelector.async = createAsyncSelector;
+  selector.async = asyncSelector;
 
-  return newSelector;
+  return selector;
 };
 
-export const newSelector = makeNewSelector();
+export const selector = createSelectorCreator();
