@@ -7,11 +7,12 @@ import {
   selector,
   TrianProvider,
   useValue,
+  useAsyncValue,
   useDispatch,
   Thunk,
 } from '../..';
 
-const { useEffect } = React;
+const { useEffect, useState } = React;
 
 const Count = block({
   default: () => 0,
@@ -126,10 +127,34 @@ const store = createStore({
 
 const customDispatch = createDispatch(store, 'samle-context');
 
+const AsyncCount = selector.async({
+  get: ({ get }) =>
+    new Promise<number>((resolve) => {
+      let count = get(Count);
+      setTimeout(() => {
+        count += get(Count);
+        resolve(count);
+      }, 1000);
+    }),
+});
+
+function UseAsync() {
+  const result = useAsyncValue(AsyncCount);
+  console.log('UseAsync', result);
+  return (
+    <div>
+      <h1>Async</h1>
+      <p>{JSON.stringify(result)}</p>
+    </div>
+  );
+}
+
 function App() {
   return (
     <TrianProvider store={store} dispatch={customDispatch}>
-      <Routes />
+      <UseAsync />
+      <Home />
+      {/* <Routes /> */}
     </TrianProvider>
   );
 }

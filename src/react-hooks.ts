@@ -8,6 +8,7 @@ import {
   ReactNode,
 } from 'react';
 import { Block, Selector, Store, Dispatch, Unsubscribe, createDispatch } from './index';
+import { AsyncSelector } from './selector';
 
 export interface TrianContextValue<Ctx> {
   readonly store: Store<any>;
@@ -35,17 +36,18 @@ export const useTrianContext = <Ctx>(): TrianContextValue<Ctx> => {
   return ctx;
 };
 
-const useNotifier = (): (() => void) => {
-  const [, update] = useState(0);
-  return function notify() {
+const useRerender = (): [() => void, number] => {
+  const [renderSeq, update] = useState(0);
+  function rerender() {
     update((n) => (n + 1) % 100);
-  };
+  }
+  return [rerender, renderSeq];
 };
 
 export const useValue = <T>(key: Block<T> | Selector<T>): T => {
   const { store } = useTrianContext();
   const unsubscribe = useRef<Unsubscribe | undefined>(undefined);
-  const notify = useNotifier();
+  const [rerender] = useRerender();
 
   // We use useRef instead of useEffect for state change subscription
   // to support autoClear feature properly.
@@ -58,12 +60,54 @@ export const useValue = <T>(key: Block<T> | Selector<T>): T => {
   // When 1 B's useBlock sets the current state as initial value
   // but when 2 it clears the current state if autoClear is set.
   if (unsubscribe.current === undefined) {
-    unsubscribe.current = store.onInvalidate(key, notify);
+    unsubscribe.current = store.onInvalidate(key, rerender);
   }
 
   useEffect(() => unsubscribe.current, []);
 
   return store.selectValue(key);
+};
+
+export type AsyncResult<T> =
+  | {
+      status: 'Loading';
+      loading: true;
+      value?: T;
+    }
+  | {
+      status: 'Done';
+      value: T;
+      loading: false;
+    }
+  | {
+      status: 'Error';
+      error: any;
+      loading: false;
+    };
+
+export const useAsyncValue = <T>(selector: AsyncSelector<T>): AsyncResult<T> => {
+  const { store } = useTrianContext();
+
+  const [rerender, renderSeq] = useRerender();
+  const unsubscribe = useRef<Unsubscribe | undefined>(undefined);
+  if (unsubscribe.current === undefined) {
+    unsubscribe.current = store.onInvalidate(selector, rerender);
+  }
+  useEffect(() => unsubscribe.current, []);
+
+  const [result, setResult] = useState<AsyncResult<T>>({ status: 'Loading', loading: true });
+  useEffect(() => {
+    if (result.status !== 'Loading') {
+      const prevValue = result.status === 'Done' ? result.value : undefined;
+      setResult({ status: 'Loading', value: prevValue, loading: true });
+    }
+    store
+      .selectValue(selector)
+      .then((value) => setResult({ status: 'Done', value, loading: false }))
+      .catch((error) => setResult({ status: 'Error', error, loading: false }));
+  }, [renderSeq]);
+
+  return result;
 };
 
 export const useDispatch = <Ctx = any>(): Dispatch<Ctx> => {
