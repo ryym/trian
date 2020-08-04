@@ -3,13 +3,13 @@ import { Selector, AsyncSelector, StoreKey, GetResult } from './selector';
 
 export interface BlockState<T> {
   current: T;
-  subscribers: SetValue<T>[];
+  changeListeners: SetValue<T>[];
 }
 
 export interface SelectorState<T> {
   cache: { value: T } | null;
   updating: { depsChanged: boolean } | null;
-  invalidationHandlers: Array<() => void>;
+  invalidationListeners: Array<() => void>;
   dependencies: Array<{ unsubscribe: Unsubscribe }>;
 }
 
@@ -36,19 +36,19 @@ export class Store<BlockCtx> {
   private getBlockState<T>(block: Block<T>): BlockState<T> {
     let state = this.blockStates.get(block);
     if (state == null) {
-      state = { current: block.default(this.blockContext), subscribers: [] };
+      state = { current: block.default(this.blockContext), changeListeners: [] };
       this.blockStates.set(block, state);
     }
     return state;
   }
 
-  onBlockValueChange = <T>(block: Block<T>, setValue: SetValue<T>): Unsubscribe => {
+  onBlockValueChange = <T>(block: Block<T>, listener: SetValue<T>): Unsubscribe => {
     const state = this.getBlockState(block);
-    state.subscribers.push(setValue);
+    state.changeListeners.push(listener);
 
     const unsubscribe = () => {
-      state.subscribers = state.subscribers.filter((sb) => sb !== setValue);
-      if (block.autoClear && state.subscribers.length === 0) {
+      state.changeListeners = state.changeListeners.filter((f) => f !== listener);
+      if (block.autoClear && state.changeListeners.length === 0) {
         this.blockStates.delete(block);
       }
     };
@@ -83,7 +83,7 @@ export class Store<BlockCtx> {
     const invalidateCache = () => {
       if (state.cache != null) {
         state.cache = null;
-        state.invalidationHandlers.forEach((h) => h());
+        state.invalidationListeners.forEach((f) => f());
       }
     };
 
@@ -110,7 +110,7 @@ export class Store<BlockCtx> {
     const invalidateCache = () => {
       if (state.cache != null) {
         state.cache = null;
-        state.invalidationHandlers.forEach((h) => h());
+        state.invalidationListeners.forEach((f) => f());
       }
       if (state.updating != null) {
         state.updating.depsChanged = true;
@@ -135,20 +135,20 @@ export class Store<BlockCtx> {
   private getSelectorState<T>(selector: Selector<T> | AsyncSelector<T>): SelectorState<T> {
     let state = this.selectorStates.get(selector);
     if (state == null) {
-      state = { cache: null, updating: null, invalidationHandlers: [], dependencies: [] };
+      state = { cache: null, updating: null, invalidationListeners: [], dependencies: [] };
       this.selectorStates.set(selector, state);
     }
     return state;
   }
 
-  onInvalidate = (key: StoreKey<any>, handler: () => void): Unsubscribe => {
+  onInvalidate = (key: StoreKey<any>, listener: () => void): Unsubscribe => {
     if (key instanceof Block) {
-      return this.onBlockValueChange(key, handler);
+      return this.onBlockValueChange(key, listener);
     } else {
       const state = this.getSelectorState(key);
-      state.invalidationHandlers.push(handler);
+      state.invalidationListeners.push(listener);
       return function unsubscribe() {
-        state.invalidationHandlers = state.invalidationHandlers.filter((f) => f !== handler);
+        state.invalidationListeners = state.invalidationListeners.filter((f) => f !== listener);
       };
     }
   };
@@ -156,7 +156,7 @@ export class Store<BlockCtx> {
   setValue = <T>(block: Block<T>, value: T): void => {
     const state = this.getBlockState(block);
     state.current = value;
-    state.subscribers.forEach((sb) => sb(value));
+    state.changeListeners.forEach((f) => f(value));
   };
 
   updateValue = <T>(block: Block<T>, updateValue: UpdateValue<T>): void => {
