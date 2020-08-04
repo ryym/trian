@@ -82,6 +82,7 @@ export type AsyncResult<T> =
   | {
       status: 'Error';
       error: any;
+      value: undefined;
       loading: false;
     };
 
@@ -95,16 +96,26 @@ export const useAsyncValue = <T>(selector: AsyncSelector<T>): AsyncResult<T> => 
   }
   useEffect(() => unsubscribe.current, []);
 
-  const [result, setResult] = useState<AsyncResult<T>>({ status: 'Loading', loading: true });
+  const [result, setResult] = useState<AsyncResult<T>>(() => {
+    const cache = store.getCacheValue(selector);
+    return cache != null
+      ? { status: 'Done', value: cache, loading: false }
+      : { status: 'Loading', loading: true };
+  });
+
   useEffect(() => {
-    if (result.status !== 'Loading') {
+    if (renderSeq === 0 && !result.loading) {
+      return;
+    }
+
+    if (!result.loading) {
       const prevValue = result.status === 'Done' ? result.value : undefined;
       setResult({ status: 'Loading', value: prevValue, loading: true });
     }
     store
       .selectValue(selector)
       .then((value) => setResult({ status: 'Done', value, loading: false }))
-      .catch((error) => setResult({ status: 'Error', error, loading: false }));
+      .catch((error) => setResult({ status: 'Error', error, loading: false, value: undefined }));
   }, [renderSeq]);
 
   return result;

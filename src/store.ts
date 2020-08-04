@@ -153,6 +153,10 @@ export class Store<BlockCtx> {
     }
   };
 
+  getCacheValue = <T>(selector: Selector<T> | AsyncSelector<T>): T | undefined => {
+    return this.getSelectorState(selector).cache?.value;
+  };
+
   setValue = <T>(block: Block<T>, value: T): void => {
     const state = this.getBlockState(block);
     state.current = value;
