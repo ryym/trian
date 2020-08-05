@@ -14,9 +14,14 @@ export interface SelectorState<T> {
 }
 
 export interface SelectorUpdating<T> {
-  depsChanged: boolean;
+  areDepsFresh: boolean;
+  isDiscarded?: boolean;
   valuePromise: Promise<T>;
 }
+
+const initSelectorState = <T>(): SelectorState<T> => {
+  return { cache: null, updating: null, invalidationListeners: [], dependencies: [] };
+};
 
 export type SetValue<T> = (value: T) => void;
 
@@ -110,9 +115,17 @@ export class Store<BlockCtx> {
     }
 
     if (state.updating != null) {
-      // If someone is already computing the async selector, just wait for it
-      // to avoid duplicate execution and possible race condition.
-      return await state.updating.valuePromise;
+      if (state.updating.areDepsFresh) {
+        // If someone is already computing the same async selector, just wait for it
+        // to avoid duplicate execution.
+        return await state.updating.valuePromise;
+      } else {
+        // But if some dependencies are updated, we should re-compute the value. To do so,
+        // we discard the current computation by replacing the selector state with a new one.
+        state.updating.isDiscarded = true;
+        this.selectorStates.set(selector, initSelectorState());
+        return this.getAsyncSelectorValue(selector);
+      }
     }
 
     state.dependencies.forEach((d) => d.unsubscribe());
@@ -124,7 +137,7 @@ export class Store<BlockCtx> {
         state.invalidationListeners.forEach((f) => f());
       }
       if (state.updating != null) {
-        state.updating.depsChanged = true;
+        state.updating.areDepsFresh = false;
       }
     };
 
@@ -135,10 +148,17 @@ export class Store<BlockCtx> {
     };
 
     const valuePromise = selector.run({ get });
-    state.updating = { depsChanged: false, valuePromise };
+    state.updating = { areDepsFresh: true, valuePromise };
     const value = await valuePromise;
 
-    if (!state.updating.depsChanged) {
+    if (state.updating.isDiscarded) {
+      // This state is no longer used so remove the subscriptions.
+      state.dependencies.forEach((d) => d.unsubscribe());
+    } else if (state.updating.areDepsFresh) {
+      // Cache the value only if it is fresh.
+      // When some dependencies are updated during the computation,
+      // we do not store a cache to run the computation again on the next call.
+      // Note that the current computation returns a stale value either way.
       state.cache = { value };
     }
     state.updating = null;
@@ -148,7 +168,7 @@ export class Store<BlockCtx> {
   private getSelectorState<T>(selector: Selector<T> | AsyncSelector<T>): SelectorState<T> {
     let state = this.selectorStates.get(selector);
     if (state == null) {
-      state = { cache: null, updating: null, invalidationListeners: [], dependencies: [] };
+      state = initSelectorState();
       this.selectorStates.set(selector, state);
     }
     return state;
