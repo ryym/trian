@@ -139,11 +139,7 @@ export class Store<BlockCtx> {
     const get = <K extends AnyGetKey<any>>(key: K): AnyGetResult<K> => {
       const unsubscribe = this.onInvalidate(key, invalidateCache);
       state.dependencies.push({ unsubscribe });
-      if (key instanceof AsyncSelector) {
-        return this.getAsyncValue(key as any) as AnyGetResult<K>;
-      } else {
-        return this.getValue(key as any);
-      }
+      return this.getAnyValue(key);
     };
 
     const valuePromise = selector.run({ get });
@@ -162,6 +158,14 @@ export class Store<BlockCtx> {
     }
     state.updating = null;
     return value;
+  };
+
+  getAnyValue = <K extends AnyGetKey<any>>(key: K): AnyGetResult<K> => {
+    if (key instanceof AsyncSelector) {
+      return this.getAsyncValue(key as any) as AnyGetResult<K>;
+    } else {
+      return this.getValue(key as any);
+    }
   };
 
   private getSelectorState<T>(selector: AnySelector<T>): SelectorState<T> {
