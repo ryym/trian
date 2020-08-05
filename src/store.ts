@@ -173,6 +173,11 @@ export class Store<BlockCtx> {
     return state;
   }
 
+  isFreshCache = <T>(key: AsyncSelector<T>, value: T): boolean => {
+    const state = this.getSelectorState(key);
+    return state.cache != null && state.cache.value === value;
+  };
+
   onInvalidate = (key: AnyGetKey<any>, listener: () => void): Unsubscribe => {
     if (key instanceof Block) {
       return this.onBlockValueChange(key, listener);
