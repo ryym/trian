@@ -1,12 +1,6 @@
 import { Block } from './block';
 
-export type StoreKey<T> = Block<T> | Selector<T> | AsyncSelector<T>;
-
-export type GetResult<K extends StoreKey<any>> = K extends AsyncSelector<infer T>
-  ? Promise<T>
-  : K extends StoreKey<infer T>
-  ? T
-  : never;
+export type AnySelector<T> = Selector<T> | AsyncSelector<T>;
 
 export type Get = <T>(selector: Block<T> | Selector<T>) => T;
 
@@ -35,10 +29,18 @@ export class Selector<T> {
   }
 }
 
-export type AsyncGet = <K extends StoreKey<any>>(selector: K) => GetResult<K>;
+export type AnyGet = <K extends AnyGetKey<any>>(selector: K) => AnyGetResult<K>;
+
+export type AnyGetKey<T> = Block<T> | Selector<T> | AsyncSelector<T>;
+
+export type AnyGetResult<K extends AnyGetKey<any>> = K extends AsyncSelector<infer T>
+  ? Promise<T>
+  : K extends AnyGetKey<infer T>
+  ? T
+  : never;
 
 export interface AsyncSelectorFnParams {
-  readonly get: AsyncGet;
+  readonly get: AnyGet;
 }
 
 export type AsyncSelectorFn<T> = (params: AsyncSelectorFnParams) => Promise<T>;

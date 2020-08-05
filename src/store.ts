@@ -1,5 +1,5 @@
 import { Block } from './block';
-import { Selector, AsyncSelector, StoreKey, GetResult } from './selector';
+import { Selector, AsyncSelector, AnyGetKey, AnyGetResult } from './selector';
 
 export interface BlockState<T> {
   current: T;
@@ -65,13 +65,13 @@ export class Store<BlockCtx> {
     return unsubscribe;
   };
 
-  selectValue = <K extends StoreKey<any>>(key: K): GetResult<K> => {
+  selectValue = <K extends AnyGetKey<any>>(key: K): AnyGetResult<K> => {
     if (key instanceof Block) {
       return this.getBlockValue(key);
     } else if (key instanceof Selector) {
       return this.getSelectorValue(key as any);
     } else if (key instanceof AsyncSelector) {
-      return this.getAsyncSelectorValue(key as any) as GetResult<K>;
+      return this.getAsyncSelectorValue(key as any) as AnyGetResult<K>;
     } else {
       throw new Error(`[trian] Invalid store key: ${key}`);
     }
@@ -141,7 +141,7 @@ export class Store<BlockCtx> {
       }
     };
 
-    const get = <K extends StoreKey<any>>(key: K): GetResult<K> => {
+    const get = <K extends AnyGetKey<any>>(key: K): AnyGetResult<K> => {
       const unsubscribe = this.onInvalidate(key, invalidateCache);
       state.dependencies.push({ unsubscribe });
       return this.selectValue(key);
@@ -174,7 +174,7 @@ export class Store<BlockCtx> {
     return state;
   }
 
-  onInvalidate = (key: StoreKey<any>, listener: () => void): Unsubscribe => {
+  onInvalidate = (key: AnyGetKey<any>, listener: () => void): Unsubscribe => {
     if (key instanceof Block) {
       return this.onBlockValueChange(key, listener);
     } else {
