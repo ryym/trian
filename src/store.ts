@@ -1,5 +1,5 @@
 import { Block } from './block';
-import { Selector, AsyncSelector, AnyGetKey, AnyGetResult } from './selector';
+import { Selector, AsyncSelector, AnyGetKey, AnyGetResult, AnySelector } from './selector';
 
 export interface BlockState<T> {
   current: T;
@@ -34,10 +34,7 @@ export class Store<BlockCtx> {
 
   private readonly blockContext: BlockCtx;
 
-  private readonly selectorStates: Map<
-    Selector<any> | AsyncSelector<any>,
-    SelectorState<any>
-  > = new Map();
+  private readonly selectorStates: Map<AnySelector<any>, SelectorState<any>> = new Map();
 
   constructor(blockContext: BlockCtx) {
     this.blockContext = blockContext;
@@ -165,7 +162,7 @@ export class Store<BlockCtx> {
     return value;
   };
 
-  private getSelectorState<T>(selector: Selector<T> | AsyncSelector<T>): SelectorState<T> {
+  private getSelectorState<T>(selector: AnySelector<T>): SelectorState<T> {
     let state = this.selectorStates.get(selector);
     if (state == null) {
       state = initSelectorState();
@@ -186,7 +183,7 @@ export class Store<BlockCtx> {
     }
   };
 
-  getCacheValue = <T>(selector: Selector<T> | AsyncSelector<T>): T | undefined => {
+  getCacheValue = <T>(selector: AnySelector<T>): T | undefined => {
     return this.getSelectorState(selector).cache?.value;
   };
 
