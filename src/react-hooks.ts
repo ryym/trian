@@ -65,7 +65,7 @@ export const useValue = <T>(key: Block<T> | Selector<T>): T => {
 
   useEffect(() => unsubscribe.current, []);
 
-  return store.selectValue(key);
+  return store.getValue(key);
 };
 
 export type AsyncResult<T> =
@@ -113,7 +113,7 @@ export const useAsyncValue = <T>(selector: AsyncSelector<T>): AsyncResult<T> => 
       setResult({ status: 'Loading', value: prevValue, loading: true });
     }
     store
-      .selectValue(selector)
+      .getAsyncValue(selector)
       .then((value) => setResult({ status: 'Done', value, loading: false }))
       .catch((error) => setResult({ status: 'Error', error, loading: false, value: undefined }));
   }, [renderSeq]);

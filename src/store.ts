@@ -62,13 +62,11 @@ export class Store<BlockCtx> {
     return unsubscribe;
   };
 
-  selectValue = <K extends AnyGetKey<any>>(key: K): AnyGetResult<K> => {
+  getValue = <T>(key: Block<T> | Selector<T>): T => {
     if (key instanceof Block) {
       return this.getBlockValue(key);
     } else if (key instanceof Selector) {
-      return this.getSelectorValue(key as any);
-    } else if (key instanceof AsyncSelector) {
-      return this.getAsyncSelectorValue(key as any) as AnyGetResult<K>;
+      return this.getSelectorValue(key);
     } else {
       throw new Error(`[trian] Invalid store key: ${key}`);
     }
@@ -97,7 +95,7 @@ export class Store<BlockCtx> {
     const get = <U>(key: Block<U> | Selector<U>): U => {
       const unsubscribe = this.onInvalidate(key, invalidateCache);
       state.dependencies.push({ unsubscribe });
-      return this.selectValue(key);
+      return this.getValue(key);
     };
 
     const value = selector.run({ get });
@@ -105,7 +103,7 @@ export class Store<BlockCtx> {
     return state.cache.value;
   };
 
-  private getAsyncSelectorValue = async <T>(selector: AsyncSelector<T>): Promise<T> => {
+  getAsyncValue = async <T>(selector: AsyncSelector<T>): Promise<T> => {
     const state = this.getSelectorState(selector);
     if (state.cache) {
       return Promise.resolve(state.cache.value);
@@ -121,7 +119,7 @@ export class Store<BlockCtx> {
         // we discard the current computation by replacing the selector state with a new one.
         state.updating.isDiscarded = true;
         this.selectorStates.set(selector, initSelectorState());
-        return this.getAsyncSelectorValue(selector);
+        return this.getAsyncValue(selector);
       }
     }
 
@@ -141,7 +139,11 @@ export class Store<BlockCtx> {
     const get = <K extends AnyGetKey<any>>(key: K): AnyGetResult<K> => {
       const unsubscribe = this.onInvalidate(key, invalidateCache);
       state.dependencies.push({ unsubscribe });
-      return this.selectValue(key);
+      if (key instanceof AsyncSelector) {
+        return this.getAsyncValue(key as any) as AnyGetResult<K>;
+      } else {
+        return this.getValue(key as any);
+      }
     };
 
     const valuePromise = selector.run({ get });
