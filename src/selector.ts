@@ -1,4 +1,4 @@
-import { Block } from './block';
+import { Block, Comparer } from './block';
 
 export type AnySelector<T> = Selector<T> | AsyncSelector<T>;
 
@@ -13,15 +13,18 @@ export type SelectorFn<T> = (params: SelectorFnParams) => T;
 export interface SelectorConfig<T> {
   readonly name?: string;
   readonly get: SelectorFn<T>;
+  readonly isSame?: Comparer<T>;
 }
 
 export class Selector<T> {
   readonly name?: string;
   private readonly fn: SelectorFn<T>;
+  readonly isSame: Comparer<T>;
 
   constructor(config: SelectorConfig<T>) {
     this.name = config.name;
     this.fn = config.get;
+    this.isSame = config.isSame || Object.is;
   }
 
   run(params: SelectorFnParams): T {
@@ -48,15 +51,18 @@ export type AsyncSelectorFn<T> = (params: AsyncSelectorFnParams) => Promise<T>;
 export interface AsyncSelectorConfig<T> {
   readonly name?: string;
   readonly get: AsyncSelectorFn<T>;
+  readonly isSame?: Comparer<T>;
 }
 
 export class AsyncSelector<T> {
   readonly name?: string;
   private readonly fn: AsyncSelectorFn<T>;
+  readonly isSame: Comparer<T>;
 
   constructor(config: AsyncSelectorConfig<T>) {
     this.name = config.name;
     this.fn = config.get;
+    this.isSame = config.isSame || Object.is;
   }
 
   run(params: AsyncSelectorFnParams): Promise<T> {

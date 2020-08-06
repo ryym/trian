@@ -108,7 +108,7 @@ export class Store<BlockCtx> {
     };
 
     let value = selector.run({ get });
-    if (state.cache.last != null && Object.is(state.cache.last.value, value)) {
+    if (state.cache.last != null && selector.isSame(state.cache.last.value, value)) {
       // If the computed result is same as the last value, use the last value to
       // keep its referential equality.
       value = state.cache.last.value;
@@ -161,7 +161,7 @@ export class Store<BlockCtx> {
     state.updating = { areDepsFresh: true, valuePromise };
 
     let value = await valuePromise;
-    if (state.cache.last != null && Object.is(state.cache.last.value, value)) {
+    if (state.cache.last != null && selector.isSame(state.cache.last.value, value)) {
       // If the computed result is same as the last value, use the last value to
       // keep its referential equality.
       value = state.cache.last.value;
@@ -225,7 +225,7 @@ export class Store<BlockCtx> {
 
   setValue = <T>(block: Block<T>, value: T): void => {
     const state = this.getBlockState(block);
-    if (Object.is(state.current, value)) {
+    if (block.isSame(state.current, value)) {
       return;
     }
     state.current = value;
