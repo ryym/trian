@@ -1,26 +1,25 @@
 # Trian
 
-Trian is my experimental state management library for [React][react].
+Trian is my experimental state management library for [React][react], heavily inspired by [Recoil][recoil].
 
 [react]: https://reactjs.org/
+[recoil]: https://github.com/facebookexperimental/recoil
 
 - Type Safe
 - Distributed - No single state object
-- Hook independent - No React requirement for just running
+- Decoupled - No React Hook requirement for just running
 
 ## Motivation
 
 - I like React Hooks, but I don't want to lock all the logic into Hooks.
     - Is it really a good practice to manage any states and effects by Hook? Even if they are UI-independent?
-- [Recoil] seems good so I made a minimum version that suits my preference.
-
-[recoil]: https://github.com/facebookexperimental/recoil
+- Recoil seems good so I made a minimum version that suits my preference.
 
 ## Code Sample
 
 ### Play without React
 
-```typescript
+```tsx
 import { block, createStore, createDispatch, Thunk } from 'trian';
 
 const Count = block({
@@ -35,13 +34,13 @@ const store = createStore();
 
 const dispatch = createDispatch(store);
 
-console.log(store.selectValue(Count)); //=> 0
+console.log(store.getValue(Count)); //=> 0
 
 dispatch(Increment);
-console.log(store.selectValue(Count)); //=> 1
+console.log(store.getValue(Count)); //=> 1
 
 dispatch(Increment, 20);
-console.log(store.selectValue(Count)); //=> 21
+console.log(store.getValue(Count)); //=> 21
 ```
 
 ### Use with React
@@ -101,3 +100,9 @@ setTimeout(() => {
   store.setValue(Count, 100); //=> Update view
 }, 1000);
 ```
+
+- `useValue`, `useAsyncValue`
+- `useBlock`
+- `useSelector`, `useAsyncSelector`
+- `useAction`
+- `useDispatch`
