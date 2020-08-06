@@ -7,11 +7,15 @@ export interface BlockState<T> {
 }
 
 export interface SelectorState<T> {
-  cache: { value: T } | null;
+  cache: SelectorCache<T>;
   updating: SelectorUpdating<T> | null;
   invalidationListeners: Array<() => void>;
   dependencies: Array<{ unsubscribe: Unsubscribe }>;
 }
+
+export type SelectorCache<T> =
+  | { isFresh: false; last: null | { value: T } }
+  | { isFresh: true; value: T };
 
 export interface SelectorUpdating<T> {
   areDepsFresh: boolean;
@@ -20,7 +24,12 @@ export interface SelectorUpdating<T> {
 }
 
 const initSelectorState = <T>(): SelectorState<T> => {
-  return { cache: null, updating: null, invalidationListeners: [], dependencies: [] };
+  return {
+    cache: { isFresh: false, last: null },
+    updating: null,
+    invalidationListeners: [],
+    dependencies: [],
+  };
 };
 
 export type SetValue<T> = (value: T) => void;
@@ -78,7 +87,7 @@ export class Store<BlockCtx> {
 
   private getSelectorValue = <T>(selector: Selector<T>): T => {
     const state = this.getSelectorState(selector);
-    if (state.cache) {
+    if (state.cache.isFresh) {
       return state.cache.value;
     }
 
@@ -86,8 +95,8 @@ export class Store<BlockCtx> {
     state.dependencies = [];
 
     const invalidateCache = () => {
-      if (state.cache != null) {
-        state.cache = null;
+      if (state.cache.isFresh) {
+        state.cache = { isFresh: false, last: { value: state.cache.value } };
         state.invalidationListeners.forEach((f) => f());
       }
     };
@@ -98,14 +107,20 @@ export class Store<BlockCtx> {
       return this.getValue(key);
     };
 
-    const value = selector.run({ get });
-    state.cache = { value };
+    let value = selector.run({ get });
+    if (state.cache.last != null && Object.is(state.cache.last.value, value)) {
+      // If the computed result is same as the last value, use the last value to
+      // keep its referential equality.
+      value = state.cache.last.value;
+    }
+
+    state.cache = { isFresh: true, value };
     return state.cache.value;
   };
 
   getAsyncValue = async <T>(selector: AsyncSelector<T>): Promise<T> => {
     const state = this.getSelectorState(selector);
-    if (state.cache) {
+    if (state.cache.isFresh) {
       return Promise.resolve(state.cache.value);
     }
 
@@ -127,8 +142,8 @@ export class Store<BlockCtx> {
     state.dependencies = [];
 
     const invalidateCache = () => {
-      if (state.cache != null) {
-        state.cache = null;
+      if (state.cache.isFresh) {
+        state.cache = { isFresh: false, last: { value: state.cache.value } };
         state.invalidationListeners.forEach((f) => f());
       }
       if (state.updating != null) {
@@ -144,18 +159,27 @@ export class Store<BlockCtx> {
 
     const valuePromise = selector.run({ get });
     state.updating = { areDepsFresh: true, valuePromise };
-    const value = await valuePromise;
+
+    let value = await valuePromise;
+    if (state.cache.last != null && Object.is(state.cache.last.value, value)) {
+      // If the computed result is same as the last value, use the last value to
+      // keep its referential equality.
+      value = state.cache.last.value;
+    }
 
     if (state.updating.isDiscarded) {
       // This state is no longer used so remove the subscriptions.
       state.dependencies.forEach((d) => d.unsubscribe());
-    } else if (state.updating.areDepsFresh) {
-      // Cache the value only if it is fresh.
-      // When some dependencies are updated during the computation,
-      // we do not store a cache to run the computation again on the next call.
-      // Note that the current computation returns a stale value either way.
-      state.cache = { value };
     }
+    if (state.updating.areDepsFresh) {
+      state.cache = { isFresh: true, value };
+    } else {
+      // When some dependencies are updated during the computation,
+      // we mark the cache as non-fresh to run the computation again on the next call.
+      // Note that the current computation returns a stale value either way.
+      state.cache = { isFresh: false, last: { value } };
+    }
+
     state.updating = null;
     return value;
   };
@@ -179,7 +203,7 @@ export class Store<BlockCtx> {
 
   isFreshCache = <T>(key: AsyncSelector<T>, value: T): boolean => {
     const state = this.getSelectorState(key);
-    return state.cache != null && state.cache.value === value;
+    return state.cache.isFresh && state.cache.value === value;
   };
 
   onInvalidate = (key: AnyGetKey<any>, listener: () => void): Unsubscribe => {
@@ -195,11 +219,15 @@ export class Store<BlockCtx> {
   };
 
   getCacheValue = <T>(selector: AnySelector<T>): T | undefined => {
-    return this.getSelectorState(selector).cache?.value;
+    const cache = this.getSelectorState(selector).cache;
+    return cache.isFresh ? cache.value : undefined;
   };
 
   setValue = <T>(block: Block<T>, value: T): void => {
     const state = this.getBlockState(block);
+    if (Object.is(state.current, value)) {
+      return;
+    }
     state.current = value;
     state.changeListeners.forEach((f) => f(value));
   };
