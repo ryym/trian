@@ -25,9 +25,9 @@ const SuperCount = selector({
   },
 });
 
-const Increment = (): Thunk<void, string> => ({ update }, ctx) => {
+const Increment = (): Thunk<void, string> => ({ set }, ctx) => {
   console.log('increment with context:', ctx);
-  update(Count, (cnt) => cnt + 1);
+  set(Count, (cnt) => cnt + 1);
 };
 
 const cleanHash = (hash: string): string => hash && hash.slice(1);
@@ -36,8 +36,8 @@ const Route = block({
   default: ({ route }: { route?: string } = {}) => route || '',
 });
 
-const SetRoute = (route: string): Thunk => ({ update }) => {
-  update(Route, () => route);
+const SetRoute = (route: string): Thunk => ({ set }) => {
+  set(Route, route);
 };
 
 const useRouteListen = () => {

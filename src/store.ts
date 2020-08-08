@@ -246,19 +246,22 @@ export class Store<BlockCtx> {
     return cache.isFresh ? cache.value : undefined;
   };
 
-  setValue = <T>(block: Block<T>, value: T): void => {
+  setValue = <T>(block: Block<T>, nextValue: T | UpdateValue<T>): void => {
     const state = this.getBlockState(block);
+
+    let value: T;
+    // Distinguish a normal function from a class object by checking a prototype does not exist.
+    if (typeof nextValue === 'function' && nextValue.prototype === undefined) {
+      value = (nextValue as UpdateValue<T>)(state.current);
+    } else {
+      value = nextValue as T;
+    }
+
     if (block.isSame(state.current, value)) {
       return;
     }
     state.current = value;
     state.changeListeners.forEach((f) => f({ type: 'NewValue', value }));
-  };
-
-  updateValue = <T>(block: Block<T>, updateValue: UpdateValue<T>): void => {
-    const state = this.getBlockState(block);
-    const nextValue = updateValue(state.current);
-    this.setValue(block, nextValue);
   };
 
   remove = (key: AnyGetKey<any>): boolean => {
