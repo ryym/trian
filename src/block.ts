@@ -22,6 +22,6 @@ export class Block<T, Ctx = any> {
   }
 }
 
-export const block = <T, Ctx>(config: BlockConfig<T, Ctx>): Block<T, Ctx> => {
+export const block = <T, Ctx = unknown>(config: BlockConfig<T, Ctx>): Block<T, Ctx> => {
   return new Block(config);
 };
