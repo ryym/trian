@@ -1,18 +1,18 @@
-import { Block } from './block';
-import { Selector, AsyncSelector, AnyGetKey, AnyGetResult, AnySelector } from './selector';
+import { Block, BlockUpdateEvent } from './block';
+import {
+  Selector,
+  AsyncSelector,
+  SelectorCacheInvalidateEvent,
+  AnyGetKey,
+  AnyGetResult,
+  AnySelector,
+} from './selector';
 
 export type UpdateValue<T> = (value: T) => T;
 
 export type Unsubscribe = () => void;
 
 export type EventListener<E> = (event: E) => void;
-
-export type BlockUpdateEvent<T> = { type: 'NewValue'; value: T } | { type: 'Removed' };
-
-export type SelectorCacheInvalidateEvent<T> = {
-  last: null | { value: T };
-  removed?: boolean;
-};
 
 export interface BlockState<T> {
   current: T;
@@ -60,6 +60,9 @@ export class Store<BlockCtx> {
     let state = this.blockStates.get(block);
     if (state == null) {
       state = { current: block.default(this.blockContext), changeListeners: [] };
+      if (block.onUpdate != null) {
+        state.changeListeners.push(block.onUpdate);
+      }
       this.blockStates.set(block, state);
     }
     return state;
@@ -192,6 +195,9 @@ export class Store<BlockCtx> {
     let state = this.selectorStates.get(selector);
     if (state == null) {
       state = initSelectorState();
+      if (selector.onCacheInvalidate != null) {
+        state.invalidationListeners.push(selector.onCacheInvalidate);
+      }
       this.selectorStates.set(selector, state);
     }
     return state;
