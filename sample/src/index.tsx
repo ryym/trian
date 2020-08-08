@@ -16,7 +16,6 @@ const { useEffect, useState } = React;
 
 const Count = block({
   default: () => 0,
-  autoClear: true,
 });
 
 const SuperCount = selector({

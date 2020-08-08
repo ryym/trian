@@ -62,13 +62,9 @@ export class Store<BlockCtx> {
     const state = this.getBlockState(block);
     state.changeListeners.push(listener);
 
-    const unsubscribe = () => {
+    return function unsubscribe() {
       state.changeListeners = state.changeListeners.filter((f) => f !== listener);
-      if (block.autoClear && state.changeListeners.length === 0) {
-        this.blockStates.delete(block);
-      }
     };
-    return unsubscribe;
   };
 
   getValue = <T>(key: Block<T> | Selector<T>): T => {

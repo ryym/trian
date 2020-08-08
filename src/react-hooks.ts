@@ -1,13 +1,5 @@
-import {
-  createContext,
-  useContext,
-  useState,
-  useEffect,
-  useRef,
-  createElement,
-  ReactNode,
-} from 'react';
-import { Block, Selector, Store, Dispatch, Unsubscribe, createDispatch } from './index';
+import { createContext, useContext, useState, useEffect, createElement, ReactNode } from 'react';
+import { Block, Selector, Store, Dispatch, createDispatch } from './index';
 import { AsyncSelector } from './selector';
 
 export interface TrianContextValue<Ctx> {
@@ -38,26 +30,14 @@ export const useTrianContext = <Ctx>(): TrianContextValue<Ctx> => {
 
 export const useValue = <T>(key: Block<T> | Selector<T>): T => {
   const { store } = useTrianContext();
-  const unsubscribe = useRef<Unsubscribe | undefined>(undefined);
   const [value, setValue] = useState(store.getValue(key));
 
-  // We use useRef instead of useEffect for state change subscription
-  // to support autoClear feature properly.
-  // Say there are two components A and B, and they uses the same block.
-  // If the parent component replaces A with B, the things happen in the following order:
-  //   1. B's useBlock is called.
-  //   2. A's unsubscribe is called (in useEffect).
-  //   3. B's subscribe is called (in useEffect)
-  // This makes difficult to keep or clear the block state if the block is used by only A and B.
-  // When 1 B's useBlock sets the current state as initial value
-  // but when 2 it clears the current state if autoClear is set.
-  if (unsubscribe.current === undefined) {
-    unsubscribe.current = store.onInvalidate(key, () => {
+  useEffect(() => {
+    const unsubscribe = store.onInvalidate(key, () => {
       setValue(store.getValue(key));
     });
-  }
-
-  useEffect(() => unsubscribe.current, []);
+    return unsubscribe;
+  }, []);
 
   return value;
 };
@@ -90,16 +70,15 @@ export const useAsyncValue = <T>(selector: AsyncSelector<T>): AsyncResult<T> => 
       : { status: 'Loading', loading: true };
   });
 
-  const unsubscribe = useRef<Unsubscribe | undefined>(undefined);
-  if (unsubscribe.current === undefined) {
-    unsubscribe.current = store.onInvalidate(selector, () => {
+  useEffect(() => {
+    const unsubscribe = store.onInvalidate(selector, () => {
       setResult((result) => {
         const lastValue = result.status === 'Done' ? result.value : undefined;
         return { status: 'Loading', loading: true, value: lastValue };
       });
     });
-  }
-  useEffect(() => unsubscribe.current, []);
+    return unsubscribe;
+  }, []);
 
   useEffect(() => {
     if (!result.loading) {
