@@ -1,15 +1,28 @@
 import { Block } from './block';
 import { Selector, AsyncSelector, AnyGetKey, AnyGetResult, AnySelector } from './selector';
 
+export type UpdateValue<T> = (value: T) => T;
+
+export type Unsubscribe = () => void;
+
+export type EventListener<E> = (event: E) => void;
+
+export type BlockValueChangeEvent<T> = { type: 'NewValue'; value: T } | { type: 'Removed' };
+
+export type SelectorCacheInvalidateEvent<T> = {
+  last: null | { value: T };
+  removed?: boolean;
+};
+
 export interface BlockState<T> {
   current: T;
-  changeListeners: SetValue<T>[];
+  changeListeners: EventListener<BlockValueChangeEvent<T>>[];
 }
 
 export interface SelectorState<T> {
   cache: SelectorCache<T>;
   updating: SelectorUpdating<T> | null;
-  invalidationListeners: Array<() => void>;
+  invalidationListeners: EventListener<SelectorCacheInvalidateEvent<T>>[];
   dependencies: Array<{ unsubscribe: Unsubscribe }>;
 }
 
@@ -32,12 +45,6 @@ const initSelectorState = <T>(): SelectorState<T> => {
   };
 };
 
-export type SetValue<T> = (value: T) => void;
-
-export type UpdateValue<T> = (value: T) => T;
-
-export type Unsubscribe = () => void;
-
 export class Store<BlockCtx> {
   private readonly blockStates: Map<Block<any>, BlockState<any>> = new Map();
 
@@ -57,15 +64,6 @@ export class Store<BlockCtx> {
     }
     return state;
   }
-
-  onBlockValueChange = <T>(block: Block<T>, listener: SetValue<T>): Unsubscribe => {
-    const state = this.getBlockState(block);
-    state.changeListeners.push(listener);
-
-    return function unsubscribe() {
-      state.changeListeners = state.changeListeners.filter((f) => f !== listener);
-    };
-  };
 
   getValue = <T>(key: Block<T> | Selector<T>): T => {
     if (key instanceof Block) {
@@ -92,8 +90,9 @@ export class Store<BlockCtx> {
 
     const invalidateCache = () => {
       if (state.cache.isFresh) {
-        state.cache = { isFresh: false, last: { value: state.cache.value } };
-        state.invalidationListeners.forEach((f) => f());
+        const last = { value: state.cache.value };
+        state.cache = { isFresh: false, last };
+        state.invalidationListeners.forEach((f) => f({ last }));
       }
     };
 
@@ -139,8 +138,9 @@ export class Store<BlockCtx> {
 
     const invalidateCache = () => {
       if (state.cache.isFresh) {
-        state.cache = { isFresh: false, last: { value: state.cache.value } };
-        state.invalidationListeners.forEach((f) => f());
+        const last = { value: state.cache.value };
+        state.cache = { isFresh: false, last: last };
+        state.invalidationListeners.forEach((f) => f({ last }));
       }
       if (state.updating != null) {
         state.updating.areDepsFresh = false;
@@ -202,16 +202,37 @@ export class Store<BlockCtx> {
     return state.cache.isFresh && state.cache.value === value;
   };
 
-  onInvalidate = (key: AnyGetKey<any>, listener: () => void): Unsubscribe => {
+  onInvalidate = <T>(
+    key: AnyGetKey<T>,
+    listener: EventListener<BlockValueChangeEvent<T> | SelectorCacheInvalidateEvent<T>>
+  ): Unsubscribe => {
     if (key instanceof Block) {
       return this.onBlockValueChange(key, listener);
     } else {
-      const state = this.getSelectorState(key);
-      state.invalidationListeners.push(listener);
-      return function unsubscribe() {
-        state.invalidationListeners = state.invalidationListeners.filter((f) => f !== listener);
-      };
+      return this.onSelectorCacheInvalidate(key, listener);
     }
+  };
+
+  onBlockValueChange = <T>(
+    block: Block<T>,
+    listener: (event: BlockValueChangeEvent<T>) => void
+  ): Unsubscribe => {
+    const state = this.getBlockState(block);
+    state.changeListeners.push(listener);
+    return function unsubscribe() {
+      state.changeListeners = state.changeListeners.filter((f) => f !== listener);
+    };
+  };
+
+  onSelectorCacheInvalidate = <T>(
+    key: AnySelector<T>,
+    listener: EventListener<SelectorCacheInvalidateEvent<T>>
+  ): Unsubscribe => {
+    const state = this.getSelectorState(key);
+    state.invalidationListeners.push(listener);
+    return function unsubscribe() {
+      state.invalidationListeners = state.invalidationListeners.filter((f) => f !== listener);
+    };
   };
 
   getCacheValue = <T>(selector: AnySelector<T>): T | undefined => {
@@ -225,13 +246,42 @@ export class Store<BlockCtx> {
       return;
     }
     state.current = value;
-    state.changeListeners.forEach((f) => f(value));
+    state.changeListeners.forEach((f) => f({ type: 'NewValue', value }));
   };
 
   updateValue = <T>(block: Block<T>, updateValue: UpdateValue<T>): void => {
     const state = this.getBlockState(block);
     const nextValue = updateValue(state.current);
     this.setValue(block, nextValue);
+  };
+
+  remove = (key: AnyGetKey<any>): boolean => {
+    if (key instanceof Block) {
+      return this.removeBlock(key);
+    } else {
+      return this.removeSelector(key);
+    }
+  };
+
+  private removeBlock = (block: Block<any>): boolean => {
+    const state = this.blockStates.get(block);
+    if (state == null) {
+      return false;
+    }
+    this.blockStates.delete(block);
+    state.changeListeners.forEach((f) => f({ type: 'Removed' }));
+    return true;
+  };
+
+  private removeSelector = (selector: AnySelector<any>): boolean => {
+    const state = this.selectorStates.get(selector);
+    if (state == null) {
+      return false;
+    }
+    this.selectorStates.delete(selector);
+    const last = state.cache.isFresh ? { value: state.cache.value } : state.cache.last;
+    state.invalidationListeners.forEach((f) => f({ last, removed: true }));
+    return true;
   };
 }
 
