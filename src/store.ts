@@ -7,7 +7,7 @@ export type Unsubscribe = () => void;
 
 export type EventListener<E> = (event: E) => void;
 
-export type BlockValueChangeEvent<T> = { type: 'NewValue'; value: T } | { type: 'Removed' };
+export type BlockUpdateEvent<T> = { type: 'NewValue'; value: T } | { type: 'Removed' };
 
 export type SelectorCacheInvalidateEvent<T> = {
   last: null | { value: T };
@@ -16,7 +16,7 @@ export type SelectorCacheInvalidateEvent<T> = {
 
 export interface BlockState<T> {
   current: T;
-  changeListeners: EventListener<BlockValueChangeEvent<T>>[];
+  changeListeners: EventListener<BlockUpdateEvent<T>>[];
 }
 
 export interface SelectorState<T> {
@@ -204,18 +204,18 @@ export class Store<BlockCtx> {
 
   onInvalidate = <T>(
     key: AnyGetKey<T>,
-    listener: EventListener<BlockValueChangeEvent<T> | SelectorCacheInvalidateEvent<T>>
+    listener: EventListener<BlockUpdateEvent<T> | SelectorCacheInvalidateEvent<T>>
   ): Unsubscribe => {
     if (key instanceof Block) {
-      return this.onBlockValueChange(key, listener);
+      return this.onBlockUpdate(key, listener);
     } else {
       return this.onSelectorCacheInvalidate(key, listener);
     }
   };
 
-  onBlockValueChange = <T>(
+  onBlockUpdate = <T>(
     block: Block<T>,
-    listener: (event: BlockValueChangeEvent<T>) => void
+    listener: (event: BlockUpdateEvent<T>) => void
   ): Unsubscribe => {
     const state = this.getBlockState(block);
     state.changeListeners.push(listener);
