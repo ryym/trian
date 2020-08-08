@@ -1,6 +1,6 @@
 import { Store, UpdateValue } from './store';
 import { Block } from './block';
-import { AnyGet } from './selector';
+import { AnyGet, AnyGetKey } from './selector';
 
 export const createDispatch = <Ctx>(store: Store<any>, ctx: Ctx): Dispatch<Ctx> => {
   function dispatch<As extends any[], R>(action: Action<As, R, Ctx>, ...args: As): R {
@@ -10,6 +10,7 @@ export const createDispatch = <Ctx>(store: Store<any>, ctx: Ctx): Dispatch<Ctx> 
   const params: ThunkParams<Ctx> = {
     get: store.getAnyValue,
     update: store.updateValue,
+    remove: store.remove,
     dispatch,
   };
 
@@ -27,6 +28,7 @@ export interface Action<Args extends any[], Result, Ctx = unknown> {
 export interface ThunkParams<Ctx> {
   get: AnyGet;
   update<T>(block: Block<T>, update: UpdateValue<T>): void;
+  remove(key: AnyGetKey<any>): void;
   dispatch<As extends any[], R>(action: Action<As, R, Ctx>, ...args: As): R;
 }
 
