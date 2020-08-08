@@ -9,8 +9,20 @@ export interface BlockFamilyConfig<T, Ctx, Args extends any[]> {
 export const blockFamily = <T, Ctx, Args extends any[]>(
   config: BlockFamilyConfig<T, Ctx, Args>
 ): Family<Block<T, Ctx>, Args> => {
-  return new Family({
+  const family = new Family({
     key: config.key,
-    value: (...args) => block(config.block(...args)),
+    value: (...args) => {
+      const blockConfig = config.block(...args);
+      return block({
+        ...blockConfig,
+        onUpdate: (event) => {
+          blockConfig.onUpdate && blockConfig.onUpdate(event);
+          if (event.type === 'Removed') {
+            family.remove(...args);
+          }
+        },
+      });
+    },
   });
+  return family;
 };

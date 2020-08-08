@@ -22,19 +22,43 @@ const createSelectorFamilyCreator = () => {
   const selectorFamily = (<T, Args extends any[]>(
     config: SelectorFamilyConfig<T, Args>
   ): Family<Selector<T>, Args> => {
-    return new Family({
+    const family = new Family({
       key: config.key,
-      value: (...args) => selector(config.selector(...args)),
+      value: (...args) => {
+        const selectorConfig = config.selector(...args);
+        return selector({
+          ...selectorConfig,
+          onCacheInvalidate: (event) => {
+            selectorConfig.onCacheInvalidate && selectorConfig.onCacheInvalidate(event);
+            if (event.removed) {
+              family.remove(...args);
+            }
+          },
+        });
+      },
     });
+    return family;
   }) as NewSelectorFamily;
 
   const asyncSelectorFamily = <T, Args extends any[]>(
     config: AsyncSelectorFamilyConfig<T, Args>
   ): Family<AsyncSelector<T>, Args> => {
-    return new Family({
+    const family = new Family({
       key: config.key,
-      value: (...args) => selector.async(config.selector(...args)),
+      value: (...args) => {
+        const selectorConfig = config.selector(...args);
+        return selector.async({
+          ...selectorConfig,
+          onCacheInvalidate: (event) => {
+            selectorConfig.onCacheInvalidate && selectorConfig.onCacheInvalidate(event);
+            if (event.removed) {
+              family.remove(...args);
+            }
+          },
+        });
+      },
     });
+    return family;
   };
 
   selectorFamily.async = asyncSelectorFamily;
