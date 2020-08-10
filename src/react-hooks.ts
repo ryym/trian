@@ -66,7 +66,7 @@ export const useAsyncValue = <T>(selector: AsyncSelector<T>): AsyncResult<T> => 
   const [result, setResult] = useState<AsyncResult<T>>(() => {
     const cache = store.getCacheValue(selector);
     return cache != null
-      ? { status: 'Done', value: cache, loading: false }
+      ? { status: 'Done', value: cache.value, loading: false }
       : { status: 'Loading', loading: true };
   });
 

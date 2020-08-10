@@ -241,9 +241,9 @@ export class Store<BlockCtx> {
     };
   };
 
-  getCacheValue = <T>(selector: AnySelector<T>): T | undefined => {
+  getCacheValue = <T>(selector: AnySelector<T>): { value: T } | null => {
     const cache = this.getSelectorState(selector).cache;
-    return cache.isFresh ? cache.value : undefined;
+    return cache.isFresh ? { value: cache.value } : null;
   };
 
   setValue = <T>(block: Block<T>, nextValue: T | UpdateValue<T>): void => {
