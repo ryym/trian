@@ -12,5 +12,5 @@
     "outDir": "dist/lib"
   },
   "include": ["src"],
-  "exclude": ["**/*_test.ts"]
+  "exclude": ["**/__tests__/**"]
 }
