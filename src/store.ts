@@ -288,6 +288,7 @@ export class Store<BlockCtx> {
       return false;
     }
     this.selectorStates.delete(selector);
+    state.dependencies.forEach((d) => d.unsubscribe());
     const last = state.cache.isFresh ? { value: state.cache.value } : state.cache.last;
     state.invalidationListeners.forEach((f) => f({ last, removed: true }));
     return true;
