@@ -9,4 +9,4 @@ export * from './store';
 export * from './comparer';
 
 // TODO: Separate import path from core.
-export * from './react-hooks';
+export * from './react';
