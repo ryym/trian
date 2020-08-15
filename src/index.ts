@@ -7,6 +7,3 @@ export * from './store';
 
 // TODO: Separate import path from core.
 export * from './comparer';
-
-// TODO: Separate import path from core.
-export * from './react';
