@@ -9,7 +9,7 @@
   },
   "main": "index.js",
   "typings": "dist/types/index.d.ts",
-  "files": ["dist", "index.js", "react.js", "react.d.ts"],
+  "files": ["dist", "index.js", "react.js", "react.d.ts", "comparer.js", "comparer.d.ts"],
   "scripts": {
     "build": "npx tsc",
     "build:w": "npx tsc --watch",
