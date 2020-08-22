@@ -1,12 +1,12 @@
 import { Block, BlockConfig, block } from './block';
 import { Family } from './family';
 
-export interface BlockFamilyConfig<T, Ctx, Args extends any[]> {
+export interface BlockFamilyConfig<T, Ctx, Args extends unknown[]> {
   readonly key: (...args: Args) => any;
   readonly block: (...args: Args) => BlockConfig<T, Ctx>;
 }
 
-export const blockFamily = <T, Ctx, Args extends any[]>(
+export const blockFamily = <T, Ctx, Args extends unknown[]>(
   config: BlockFamilyConfig<T, Ctx, Args>
 ): Family<Block<T, Ctx>, Args> => {
   const family = new Family({

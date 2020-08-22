@@ -1,12 +1,12 @@
-export interface FamilyConfig<V, Args extends any[]> {
-  readonly key: (...args: Args) => any;
+export interface FamilyConfig<V, Args extends unknown[]> {
+  readonly key: (...args: Args) => unknown;
   readonly value: (...args: Args) => V;
 }
 
-export class Family<V, Args extends any[]> {
-  private keyToMember: Map<any, V> = new Map();
+export class Family<V, Args extends unknown[]> {
+  private keyToMember: Map<unknown, V> = new Map();
 
-  readonly key: (...args: Args) => any;
+  readonly key: (...args: Args) => unknown;
   private readonly value: (...args: Args) => V;
 
   constructor({ key, value }: FamilyConfig<V, Args>) {
@@ -24,7 +24,7 @@ export class Family<V, Args extends any[]> {
     return member;
   };
 
-  keys = (): any[] => {
+  keys = (): unknown[] => {
     return [...this.keyToMember.keys()];
   };
 

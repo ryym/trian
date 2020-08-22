@@ -24,7 +24,7 @@ export const shallowEqualObjects = (a: AnyObject, b: AnyObject): boolean => {
   return true;
 };
 
-export const shallowEqualArrays = (a: any[], b: any[]): boolean => {
+export const shallowEqualArrays = (a: unknown[], b: unknown[]): boolean => {
   if (a === b) {
     return true;
   }
