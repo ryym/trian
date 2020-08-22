@@ -16,10 +16,8 @@ export class Family<V, Args extends any[]> {
 
   by = (...args: Args): V => {
     const key = this.key(...args);
-    let member: V;
-    if (this.keyToMember.has(key)) {
-      member = this.keyToMember.get(key)!;
-    } else {
+    let member = this.keyToMember.get(key);
+    if (member == null) {
       member = this.value(...args);
       this.keyToMember.set(key, member);
     }
