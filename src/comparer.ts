@@ -15,7 +15,7 @@ export const shallowEqualObjects = (a: AnyObject, b: AnyObject): boolean => {
     return false;
   }
 
-  for (var i = 0; i < aKeys.length; i++) {
+  for (let i = 0; i < aKeys.length; i++) {
     const key = aKeys[i];
     if (a[key] !== b[key] || !Object.prototype.hasOwnProperty.call(b, key)) {
       return false;

@@ -295,6 +295,8 @@ export class Store<BlockCtx> {
   };
 }
 
-export const createStore = <BlockCtx = undefined>(blockCtx?: BlockCtx) => {
+export const createStore = <BlockCtx = undefined>(
+  blockCtx?: BlockCtx
+): Store<BlockCtx | undefined> => {
   return new Store(blockCtx);
 };

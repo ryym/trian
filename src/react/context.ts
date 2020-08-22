@@ -1,4 +1,5 @@
-import { createContext, useContext, createElement, ReactNode } from 'react';
+import { createContext, useContext, createElement } from 'react';
+import type { ReactNode, FunctionComponentElement, ProviderProps } from 'react';
 import { Dispatch, createDispatch } from '../dispatch';
 import { Store } from '../store';
 
@@ -15,7 +16,13 @@ export interface TrianProviderProps {
   readonly children?: ReactNode;
 }
 
-export const TrianProvider = ({ store, dispatch, children }: TrianProviderProps) => {
+type TrianProviderType = FunctionComponentElement<ProviderProps<TrianContextValue<any> | null>>;
+
+export const TrianProvider = ({
+  store,
+  dispatch,
+  children,
+}: TrianProviderProps): TrianProviderType => {
   dispatch = dispatch ?? createDispatch(store, undefined);
   return createElement(TrianContext.Provider, { value: { store, dispatch } }, children);
 };
