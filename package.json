@@ -16,7 +16,8 @@
     "test": "npx jest",
     "test:w": "npx jest --watch",
     "lint": "npx eslint . --ext js,ts",
-    "sample": "npx webpack-dev-server"
+    "sample": "npx webpack-dev-server",
+    "preversion": "yarn build && yarn test"
   },
   "dependencies": {},
   "peerDependencies": {
