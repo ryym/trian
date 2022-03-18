@@ -1,4 +1,4 @@
-import { Block, BlockUpdateEvent } from './block';
+import { Block, BlockUpdateEvent } from "./block";
 import {
   Selector,
   AsyncSelector,
@@ -6,7 +6,7 @@ import {
   AnyGetKey,
   AnyGetResult,
   AnySelector,
-} from './selector';
+} from "./selector";
 
 export type UpdateValue<T> = (value: T) => T;
 
@@ -159,7 +159,7 @@ export class Store<BlockCtx> {
     const valuePromise = selector.run({ get });
     state.updating = { areDepsFresh: true, valuePromise };
 
-    let value = await valuePromise;
+    let value: T = await valuePromise;
     if (state.cache.last != null && selector.isSame(state.cache.last.value, value)) {
       // If the computed result is same as the last value, use the last value to
       // keep its referential equality.
@@ -251,7 +251,7 @@ export class Store<BlockCtx> {
 
     let value: T;
     // Distinguish a normal function from a class object by checking a prototype does not exist.
-    if (typeof nextValue === 'function' && nextValue.prototype === undefined) {
+    if (typeof nextValue === "function" && nextValue.prototype === undefined) {
       value = (nextValue as UpdateValue<T>)(state.current);
     } else {
       value = nextValue as T;
@@ -261,7 +261,7 @@ export class Store<BlockCtx> {
       return;
     }
     state.current = value;
-    state.changeListeners.forEach((f) => f({ type: 'NewValue', value }));
+    state.changeListeners.forEach((f) => f({ type: "NewValue", value }));
   };
 
   remove = (key: AnyGetKey<any>): boolean => {
@@ -278,7 +278,7 @@ export class Store<BlockCtx> {
       return false;
     }
     this.blockStates.delete(block);
-    state.changeListeners.forEach((f) => f({ type: 'Removed' }));
+    state.changeListeners.forEach((f) => f({ type: "Removed" }));
     return true;
   };
 
