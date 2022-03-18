@@ -23,7 +23,9 @@ module.exports = {
 
   devServer: {
     port: process.env.PORT || "3200",
-    overlay: true,
+    client: {
+      overlay: true,
+    },
   },
 
   devtool: "eval-cheap-module-source-map",
