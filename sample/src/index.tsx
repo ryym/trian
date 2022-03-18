@@ -1,16 +1,7 @@
 import * as React from "react";
 import { render } from "react-dom";
-import {
-  createStore,
-  createDispatch,
-  block,
-  selector,
-  TrianProvider,
-  useValue,
-  useAsyncValue,
-  useDispatch,
-  Thunk,
-} from "../..";
+import { createStore, createDispatch, block, selector, Thunk } from "../..";
+import { TrianProvider, useValue, useAsyncValue, useDispatch } from "../../react";
 
 const { useEffect, useState } = React;
 
@@ -25,12 +16,12 @@ const SuperCount = selector({
   },
 });
 
-const Increment =
-  (): Thunk<void, string> =>
-  ({ set }, ctx) => {
+const Increment = (): Thunk<void, string> => {
+  return ({ set }, ctx) => {
     console.log("increment with context:", ctx);
     set(Count, (cnt) => cnt + 1);
   };
+};
 
 const cleanHash = (hash: string): string => hash && hash.slice(1);
 
@@ -38,11 +29,11 @@ const Route = block({
   default: ({ route }: { route?: string } = {}) => route || "",
 });
 
-const SetRoute =
-  (route: string): Thunk =>
-  ({ set }) => {
+const SetRoute = (route: string): Thunk => {
+  return ({ set }) => {
     set(Route, route);
   };
+};
 
 const useRouteListen = () => {
   const dispatch = useDispatch();
@@ -128,14 +119,13 @@ const store = createStore({
   route: cleanHash(document.location.hash),
 });
 
-const customDispatch = createDispatch(store, "samle-context");
+const customDispatch = createDispatch(store, "sample-context");
 
 const AsyncCount = selector.async({
   get: ({ get }) =>
     new Promise<number>((resolve) => {
       setTimeout(() => {
         let count = get(Count);
-        // count += get(Count);
         resolve(count * 2);
       }, 1000);
     }),
@@ -170,8 +160,7 @@ function App() {
     <TrianProvider store={store} dispatch={customDispatch}>
       <UseAsync id="use-async1" />
       <UseAsyncWrapper />
-      <Home />
-      {/* <Routes /> */}
+      <Routes />
     </TrianProvider>
   );
 }
