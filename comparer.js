@@ -1,1 +1,1 @@
-module.exports = require('./dist/lib/comparer');
+module.exports = require("./dist/lib/comparer");

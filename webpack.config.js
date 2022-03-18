@@ -1,32 +1,32 @@
-const path = require('path');
-const { CleanWebpackPlugin } = require('clean-webpack-plugin');
-const HtmlWebpackPlugin = require('html-webpack-plugin');
+const path = require("path");
+const { CleanWebpackPlugin } = require("clean-webpack-plugin");
+const HtmlWebpackPlugin = require("html-webpack-plugin");
 
-const SAMPLE_ROOT = path.join(__dirname, 'sample');
-const SRC = path.join(SAMPLE_ROOT, 'src');
+const SAMPLE_ROOT = path.join(__dirname, "sample");
+const SRC = path.join(SAMPLE_ROOT, "src");
 
 module.exports = {
-  mode: 'development',
+  mode: "development",
 
   entry: {
     app: SRC,
   },
 
   output: {
-    path: path.join(SAMPLE_ROOT, 'dist'),
-    filename: '[name].js',
+    path: path.join(SAMPLE_ROOT, "dist"),
+    filename: "[name].js",
   },
 
   resolve: {
-    extensions: ['.ts', '.tsx', '.js'],
+    extensions: [".ts", ".tsx", ".js"],
   },
 
   devServer: {
-    port: process.env.PORT || '3200',
+    port: process.env.PORT || "3200",
     overlay: true,
   },
 
-  devtool: 'eval-cheap-module-source-map',
+  devtool: "eval-cheap-module-source-map",
 
   module: {
     rules: [
@@ -35,8 +35,8 @@ module.exports = {
         include: SRC,
         use: [
           {
-            loader: 'ts-loader',
-            options: { configFile: 'tsconfig.sample.json' },
+            loader: "ts-loader",
+            options: { configFile: "tsconfig.sample.json" },
           },
         ],
       },
@@ -47,7 +47,7 @@ module.exports = {
     new CleanWebpackPlugin(),
 
     new HtmlWebpackPlugin({
-      template: path.join(SAMPLE_ROOT, 'index.html'),
+      template: path.join(SAMPLE_ROOT, "index.html"),
     }),
   ],
 };

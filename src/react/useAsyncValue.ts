@@ -1,20 +1,20 @@
-import { useState, useEffect } from 'react';
-import { useTrianContext } from './context';
-import { AsyncSelector } from '../selector';
+import { useState, useEffect } from "react";
+import { useTrianContext } from "./context";
+import { AsyncSelector } from "../selector";
 
 export type AsyncResult<T> =
   | {
-      status: 'Loading';
+      status: "Loading";
       loading: true;
       value?: T;
     }
   | {
-      status: 'Done';
+      status: "Done";
       value: T;
       loading: false;
     }
   | {
-      status: 'Error';
+      status: "Error";
       error: any;
       value: undefined;
       loading: false;
@@ -26,15 +26,15 @@ export const useAsyncValue = <T>(selector: AsyncSelector<T>): AsyncResult<T> => 
   const [result, setResult] = useState<AsyncResult<T>>(() => {
     const cache = store.getCacheValue(selector);
     return cache != null
-      ? { status: 'Done', value: cache.value, loading: false }
-      : { status: 'Loading', loading: true };
+      ? { status: "Done", value: cache.value, loading: false }
+      : { status: "Loading", loading: true };
   });
 
   useEffect(() => {
     const unsubscribe = store.onInvalidate(selector, () => {
       setResult((result) => {
-        const lastValue = result.status === 'Done' ? result.value : undefined;
-        return { status: 'Loading', loading: true, value: lastValue };
+        const lastValue = result.status === "Done" ? result.value : undefined;
+        return { status: "Loading", loading: true, value: lastValue };
       });
     });
     return unsubscribe;
@@ -46,8 +46,8 @@ export const useAsyncValue = <T>(selector: AsyncSelector<T>): AsyncResult<T> => 
     }
     store
       .getAsyncValue(selector)
-      .then((value) => setResult({ status: 'Done', value, loading: false }))
-      .catch((error) => setResult({ status: 'Error', error, loading: false, value: undefined }));
+      .then((value) => setResult({ status: "Done", value, loading: false }))
+      .catch((error) => setResult({ status: "Error", error, loading: false, value: undefined }));
   }, [result.loading]);
 
   return result;

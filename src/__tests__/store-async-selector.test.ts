@@ -1,11 +1,11 @@
-import { block } from '../block';
-import { selector } from '../selector';
-import { createStore } from '../store';
-import { Pauser } from './lib/pauser';
+import { block } from "../block";
+import { selector } from "../selector";
+import { createStore } from "../store";
+import { Pauser } from "./lib/pauser";
 
-describe('AsyncSelector and Store', () => {
-  describe('store.getAsyncValue', () => {
-    it('computes and caches selector value', async () => {
+describe("AsyncSelector and Store", () => {
+  describe("store.getAsyncValue", () => {
+    it("computes and caches selector value", async () => {
       let nCalled = 0;
       const fn = jest.fn().mockImplementation(async () => ++nCalled);
       const numValue = selector.async<number>({ get: fn });
@@ -21,8 +21,8 @@ describe('AsyncSelector and Store', () => {
       expect({ values, calledCount }).toEqual({ values: [1, 1, 1], calledCount: 1 });
     });
 
-    describe('when any of dependencies changed', () => {
-      it('re-computes value (direct dependency changes)', async () => {
+    describe("when any of dependencies changed", () => {
+      it("re-computes value (direct dependency changes)", async () => {
         const numValue = block({ default: () => 2 });
         let nCalled = 0;
         const squareValue = selector.async({
@@ -43,7 +43,7 @@ describe('AsyncSelector and Store', () => {
         expect({ values, nCalled }).toEqual({ values: [4, 4, 49, 49], nCalled: 2 });
       });
 
-      it('re-computes value (indirect dependency changes)', async () => {
+      it("re-computes value (indirect dependency changes)", async () => {
         const numValue = block({ default: () => 2 });
         const squareValue = selector.async({
           get: async ({ get }) => get(numValue) * get(numValue),
@@ -69,8 +69,8 @@ describe('AsyncSelector and Store', () => {
       });
     });
 
-    describe('when any of dependencies changed during computation', () => {
-      it('returns stale value and do not store cache', async () => {
+    describe("when any of dependencies changed during computation", () => {
+      it("returns stale value and do not store cache", async () => {
         const pauser = new Pauser();
         const numValue = block({ default: () => 4 });
         const squareValue = selector.async({
@@ -105,9 +105,9 @@ describe('AsyncSelector and Store', () => {
       });
     });
 
-    describe('when same selector is called during computation', () => {
-      describe('when dependencies does not change', () => {
-        it('reuse current computation result', async () => {
+    describe("when same selector is called during computation", () => {
+      describe("when dependencies does not change", () => {
+        it("reuse current computation result", async () => {
           const pauser = new Pauser();
           const numValue = block({ default: () => 4 });
           let nCalled = 0;
@@ -132,8 +132,8 @@ describe('AsyncSelector and Store', () => {
         });
       });
 
-      describe('when any of dependencies has changed', () => {
-        it('discards first computation even if it finishes after second', async () => {
+      describe("when any of dependencies has changed", () => {
+        it("discards first computation even if it finishes after second", async () => {
           const pausers = [new Pauser(), new Pauser()];
           const numValue = block({ default: () => 4 });
           let callIdx = 0;

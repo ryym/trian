@@ -1,5 +1,5 @@
-import { Family } from './family';
-import { Selector, AsyncSelector, SelectorConfig, AsyncSelectorConfig, selector } from './selector';
+import { Family } from "./family";
+import { Selector, AsyncSelector, SelectorConfig, AsyncSelectorConfig, selector } from "./selector";
 
 export interface SelectorFamilyConfig<T, Args extends unknown[]> {
   readonly key: (...args: Args) => any;
@@ -14,13 +14,13 @@ export interface AsyncSelectorFamilyConfig<T, Args extends unknown[]> {
 export interface NewSelectorFamily {
   <T, Args extends unknown[]>(config: SelectorFamilyConfig<T, Args>): Family<Selector<T>, Args>;
   async<T, Args extends unknown[]>(
-    config: AsyncSelectorFamilyConfig<T, Args>
+    config: AsyncSelectorFamilyConfig<T, Args>,
   ): Family<AsyncSelector<T>, Args>;
 }
 
 const createSelectorFamilyCreator = () => {
   const selectorFamily = (<T, Args extends unknown[]>(
-    config: SelectorFamilyConfig<T, Args>
+    config: SelectorFamilyConfig<T, Args>,
   ): Family<Selector<T>, Args> => {
     const family = new Family({
       key: config.key,
@@ -41,7 +41,7 @@ const createSelectorFamilyCreator = () => {
   }) as NewSelectorFamily;
 
   const asyncSelectorFamily = <T, Args extends any[]>(
-    config: AsyncSelectorFamilyConfig<T, Args>
+    config: AsyncSelectorFamilyConfig<T, Args>,
   ): Family<AsyncSelector<T>, Args> => {
     const family = new Family({
       key: config.key,

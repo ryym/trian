@@ -210,7 +210,7 @@ export class Store<BlockCtx> {
 
   onInvalidate = <T>(
     key: AnyGetKey<T>,
-    listener: EventListener<BlockUpdateEvent<T> | SelectorCacheInvalidateEvent<T>>
+    listener: EventListener<BlockUpdateEvent<T> | SelectorCacheInvalidateEvent<T>>,
   ): Unsubscribe => {
     if (key instanceof Block) {
       return this.onBlockUpdate(key, listener);
@@ -221,7 +221,7 @@ export class Store<BlockCtx> {
 
   onBlockUpdate = <T>(
     block: Block<T>,
-    listener: (event: BlockUpdateEvent<T>) => void
+    listener: (event: BlockUpdateEvent<T>) => void,
   ): Unsubscribe => {
     const state = this.getBlockState(block);
     state.changeListeners.push(listener);
@@ -232,7 +232,7 @@ export class Store<BlockCtx> {
 
   onSelectorCacheInvalidate = <T>(
     key: AnySelector<T>,
-    listener: EventListener<SelectorCacheInvalidateEvent<T>>
+    listener: EventListener<SelectorCacheInvalidateEvent<T>>,
   ): Unsubscribe => {
     const state = this.getSelectorState(key);
     state.invalidationListeners.push(listener);
@@ -296,7 +296,7 @@ export class Store<BlockCtx> {
 }
 
 export const createStore = <BlockCtx = undefined>(
-  blockCtx?: BlockCtx
+  blockCtx?: BlockCtx,
 ): Store<BlockCtx | undefined> => {
   return new Store(blockCtx);
 };

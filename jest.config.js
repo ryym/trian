@@ -1,11 +1,11 @@
 module.exports = {
-  roots: ['src'],
+  roots: ["src"],
 
   verbose: true,
 
-  moduleFileExtensions: ['js', 'ts', 'tsx'],
+  moduleFileExtensions: ["js", "ts", "tsx"],
 
-  preset: 'ts-jest',
+  preset: "ts-jest",
 
-  testMatch: ['**/*.test.(ts|tsx)'],
+  testMatch: ["**/*.test.(ts|tsx)"],
 };

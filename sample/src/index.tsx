@@ -1,5 +1,5 @@
-import * as React from 'react';
-import { render } from 'react-dom';
+import * as React from "react";
+import { render } from "react-dom";
 import {
   createStore,
   createDispatch,
@@ -10,7 +10,7 @@ import {
   useAsyncValue,
   useDispatch,
   Thunk,
-} from '../..';
+} from "../..";
 
 const { useEffect, useState } = React;
 
@@ -20,25 +20,29 @@ const Count = block({
 
 const SuperCount = selector({
   get: ({ get }) => {
-    console.log('compute super count');
+    console.log("compute super count");
     return get(Count) + 100;
   },
 });
 
-const Increment = (): Thunk<void, string> => ({ set }, ctx) => {
-  console.log('increment with context:', ctx);
-  set(Count, (cnt) => cnt + 1);
-};
+const Increment =
+  (): Thunk<void, string> =>
+  ({ set }, ctx) => {
+    console.log("increment with context:", ctx);
+    set(Count, (cnt) => cnt + 1);
+  };
 
 const cleanHash = (hash: string): string => hash && hash.slice(1);
 
 const Route = block({
-  default: ({ route }: { route?: string } = {}) => route || '',
+  default: ({ route }: { route?: string } = {}) => route || "",
 });
 
-const SetRoute = (route: string): Thunk => ({ set }) => {
-  set(Route, route);
-};
+const SetRoute =
+  (route: string): Thunk =>
+  ({ set }) => {
+    set(Route, route);
+  };
 
 const useRouteListen = () => {
   const dispatch = useDispatch();
@@ -48,15 +52,15 @@ const useRouteListen = () => {
   };
 
   useEffect(() => {
-    window.addEventListener('hashchange', listen);
-    return () => window.removeEventListener('hashchange', listen);
+    window.addEventListener("hashchange", listen);
+    return () => window.removeEventListener("hashchange", listen);
   }, []);
 };
 
 function Routes() {
   useRouteListen();
   const route = useValue(Route);
-  const pages = ['home', 'about', 'nocount'];
+  const pages = ["home", "about", "nocount"];
 
   return (
     <div>
@@ -70,10 +74,10 @@ function Routes() {
         </ul>
       </header>
       <main>
-        {route === 'home' && <Home />}
-        {route === 'about' && <About />}
-        {route === 'nocount' && <h1>No count here</h1>}
-        {route !== 'nocount' && <Footer />}
+        {route === "home" && <Home />}
+        {route === "about" && <About />}
+        {route === "nocount" && <h1>No count here</h1>}
+        {route !== "nocount" && <Footer />}
       </main>
     </div>
   );
@@ -109,9 +113,9 @@ function About() {
 function Footer() {
   const count = useValue(SuperCount);
   useEffect(() => {
-    console.log('SuperCount changed', count);
+    console.log("SuperCount changed", count);
   }, [count]);
-  console.log('render footer');
+  console.log("render footer");
 
   return (
     <footer>
@@ -124,7 +128,7 @@ const store = createStore({
   route: cleanHash(document.location.hash),
 });
 
-const customDispatch = createDispatch(store, 'samle-context');
+const customDispatch = createDispatch(store, "samle-context");
 
 const AsyncCount = selector.async({
   get: ({ get }) =>
@@ -139,8 +143,8 @@ const AsyncCount = selector.async({
 
 function UseAsync({ id }: any) {
   const result = useAsyncValue(AsyncCount);
-  console.log('render', id, result);
-  if (result.status === 'Error') {
+  console.log("render", id, result);
+  if (result.status === "Error") {
     console.error(result.error);
   }
   return (
@@ -172,4 +176,4 @@ function App() {
   );
 }
 
-render(<App />, document.getElementById('root'));
+render(<App />, document.getElementById("root"));

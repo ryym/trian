@@ -24,7 +24,7 @@ export class Pauser {
 
   resume(): void {
     if (this.state == null) {
-      throw new Error('[Pauser] call .pause() first');
+      throw new Error("[Pauser] call .pause() first");
     }
     this.state.resolve();
     this.state = null;

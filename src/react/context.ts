@@ -1,7 +1,7 @@
-import { createContext, useContext, createElement } from 'react';
-import type { ReactNode, FunctionComponentElement, ProviderProps } from 'react';
-import { Dispatch, createDispatch } from '../dispatch';
-import { Store } from '../store';
+import { createContext, useContext, createElement } from "react";
+import type { ReactNode, FunctionComponentElement, ProviderProps } from "react";
+import { Dispatch, createDispatch } from "../dispatch";
+import { Store } from "../store";
 
 export interface TrianContextValue<Ctx> {
   readonly store: Store<any>;
@@ -30,7 +30,7 @@ export const TrianProvider = ({
 export const useTrianContext = <Ctx>(): TrianContextValue<Ctx> => {
   const ctx = useContext(TrianContext);
   if (ctx == null) {
-    throw new Error('[trian] Store not found. Please wrap your component tree by TrianProvider');
+    throw new Error("[trian] Store not found. Please wrap your component tree by TrianProvider");
   }
   return ctx;
 };

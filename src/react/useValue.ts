@@ -1,7 +1,7 @@
-import { useState, useEffect } from 'react';
-import { useTrianContext } from './context';
-import { Block } from '../block';
-import { Selector } from '../selector';
+import { useState, useEffect } from "react";
+import { useTrianContext } from "./context";
+import { Block } from "../block";
+import { Selector } from "../selector";
 
 export const useValue = <T>(key: Block<T> | Selector<T>): T => {
   const { store } = useTrianContext();

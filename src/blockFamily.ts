@@ -1,5 +1,5 @@
-import { Block, BlockConfig, block } from './block';
-import { Family } from './family';
+import { Block, BlockConfig, block } from "./block";
+import { Family } from "./family";
 
 export interface BlockFamilyConfig<T, Ctx, Args extends unknown[]> {
   readonly key: (...args: Args) => any;
@@ -7,7 +7,7 @@ export interface BlockFamilyConfig<T, Ctx, Args extends unknown[]> {
 }
 
 export const blockFamily = <T, Ctx, Args extends unknown[]>(
-  config: BlockFamilyConfig<T, Ctx, Args>
+  config: BlockFamilyConfig<T, Ctx, Args>,
 ): Family<Block<T, Ctx>, Args> => {
   const family = new Family({
     key: config.key,
@@ -17,7 +17,7 @@ export const blockFamily = <T, Ctx, Args extends unknown[]>(
         ...blockConfig,
         onUpdate: (event) => {
           blockConfig.onUpdate && blockConfig.onUpdate(event);
-          if (event.type === 'Removed') {
+          if (event.type === "Removed") {
             family.remove(...args);
           }
         },

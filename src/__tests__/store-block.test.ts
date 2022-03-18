@@ -1,38 +1,38 @@
-import { block, BlockUpdateEvent } from '../block';
-import { createStore } from '../store';
+import { block, BlockUpdateEvent } from "../block";
+import { createStore } from "../store";
 
-describe('Block and Store', () => {
-  describe('store.getValue', () => {
-    it('returns current block value', () => {
-      const strValue = block({ default: () => 'a' });
+describe("Block and Store", () => {
+  describe("store.getValue", () => {
+    it("returns current block value", () => {
+      const strValue = block({ default: () => "a" });
       const store = createStore();
       const value = store.getValue(strValue);
-      expect(value).toEqual('a');
+      expect(value).toEqual("a");
     });
   });
 
-  describe('store.setValue', () => {
-    it('updates block value', () => {
-      const strValue = block({ default: () => '' });
+  describe("store.setValue", () => {
+    it("updates block value", () => {
+      const strValue = block({ default: () => "" });
       const store = createStore();
 
       const firstValue = store.getValue(strValue);
-      store.setValue(strValue, 'hello');
+      store.setValue(strValue, "hello");
       const secondValue = store.getValue(strValue);
 
-      expect([firstValue, secondValue]).toEqual(['', 'hello']);
+      expect([firstValue, secondValue]).toEqual(["", "hello"]);
     });
 
-    it('can set value even if block does not exist on store yet', () => {
-      const strValue = block({ default: () => '' });
+    it("can set value even if block does not exist on store yet", () => {
+      const strValue = block({ default: () => "" });
       const store = createStore();
 
-      store.setValue(strValue, 'hello');
-      expect(store.getValue(strValue)).toEqual('hello');
+      store.setValue(strValue, "hello");
+      expect(store.getValue(strValue)).toEqual("hello");
     });
 
-    describe('updating by function', () => {
-      it('enables to update value using current value', () => {
+    describe("updating by function", () => {
+      it("enables to update value using current value", () => {
         const countValue = block({ default: () => 15 });
         const store = createStore();
 
@@ -42,7 +42,7 @@ describe('Block and Store', () => {
         expect(value).toEqual(30);
       });
 
-      it('distinguishes class object from function', () => {
+      it("distinguishes class object from function", () => {
         class Foo {}
         class SubFoo extends Foo {}
         const FooValue = block({ default: () => Foo });
@@ -56,8 +56,8 @@ describe('Block and Store', () => {
     });
   });
 
-  describe('store.remove', () => {
-    it('removes block from store', () => {
+  describe("store.remove", () => {
+    it("removes block from store", () => {
       const countValue = block({ default: () => 0 });
       const store = createStore();
 
@@ -69,7 +69,7 @@ describe('Block and Store', () => {
       expect([valueBeforeRemove, valueAfterRemove]).toEqual([100, 0]);
     });
 
-    it('returns block is remove or not', () => {
+    it("returns block is remove or not", () => {
       const countValue = block({ default: () => 0 });
       const store = createStore();
 
@@ -80,8 +80,8 @@ describe('Block and Store', () => {
       expect([removed1, removed2]).toEqual([true, false]);
     });
 
-    describe('when update listener exists', () => {
-      it('removes listeners as well', () => {
+    describe("when update listener exists", () => {
+      it("removes listeners as well", () => {
         const countValue = block({ default: () => 0 });
         const store = createStore();
         const listener = jest.fn();
@@ -96,8 +96,8 @@ describe('Block and Store', () => {
     });
   });
 
-  describe('store.onBlockUpdate', () => {
-    it('notifies listeners when block value changes', () => {
+  describe("store.onBlockUpdate", () => {
+    it("notifies listeners when block value changes", () => {
       const countValue = block({ default: () => 0 });
       const store = createStore();
       const listeners = [jest.fn(), jest.fn()];
@@ -109,9 +109,9 @@ describe('Block and Store', () => {
       store.setValue(countValue, 5);
 
       const expectedCalls: [BlockUpdateEvent<number>][] = [
-        [{ type: 'NewValue', value: 10 }],
-        [{ type: 'NewValue', value: -128 }],
-        [{ type: 'Removed' }],
+        [{ type: "NewValue", value: 10 }],
+        [{ type: "NewValue", value: -128 }],
+        [{ type: "Removed" }],
         // No events after removed.
       ];
       listeners.forEach((l) => {
@@ -120,9 +120,9 @@ describe('Block and Store', () => {
     });
   });
 
-  describe('Block context', () => {
+  describe("Block context", () => {
     class AppState {
-      constructor(readonly loggedIn: boolean = false, readonly version: string = '1.0') {}
+      constructor(readonly loggedIn: boolean = false, readonly version: string = "1.0") {}
     }
 
     type Context = { userID: number | null; version: string };
@@ -136,17 +136,17 @@ describe('Block and Store', () => {
       },
     });
 
-    it('allows block to compute default value dynamically', () => {
-      const context: Context = { userID: 1, version: '1.2' };
+    it("allows block to compute default value dynamically", () => {
+      const context: Context = { userID: 1, version: "1.2" };
       const store = createStore(context);
       const value = store.getValue(appStateValue);
-      expect(value).toEqual(new AppState(true, '1.2'));
+      expect(value).toEqual(new AppState(true, "1.2"));
     });
 
-    it('does not require store to have context', () => {
+    it("does not require store to have context", () => {
       const store = createStore();
       const value = store.getValue(appStateValue);
-      expect(value).toEqual(new AppState(false, '1.0'));
+      expect(value).toEqual(new AppState(false, "1.0"));
     });
   });
 });

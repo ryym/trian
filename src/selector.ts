@@ -1,4 +1,4 @@
-import { Block, Comparer } from './block';
+import { Block, Comparer } from "./block";
 
 export type AnySelector<T> = Selector<T> | AsyncSelector<T>;
 

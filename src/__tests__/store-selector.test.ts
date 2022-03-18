@@ -1,10 +1,10 @@
-import { block } from '../block';
-import { selector, SelectorCacheInvalidateEvent } from '../selector';
-import { createStore } from '../store';
+import { block } from "../block";
+import { selector, SelectorCacheInvalidateEvent } from "../selector";
+import { createStore } from "../store";
 
-describe('Selector and Store', () => {
-  describe('store.getValue', () => {
-    it('computes and caches selector value', () => {
+describe("Selector and Store", () => {
+  describe("store.getValue", () => {
+    it("computes and caches selector value", () => {
       let nCalled = 0;
       const fn = jest.fn().mockImplementation(() => ++nCalled);
       const numValue = selector<number>({ get: fn });
@@ -15,8 +15,8 @@ describe('Selector and Store', () => {
       expect({ values, calledCount }).toEqual({ values: [1, 1, 1], calledCount: 1 });
     });
 
-    describe('when any of dependencies changed', () => {
-      it('re-computes value (direct dependency changes)', () => {
+    describe("when any of dependencies changed", () => {
+      it("re-computes value (direct dependency changes)", () => {
         const numValue = block({ default: () => 2 });
         let nCalled = 0;
         const squareValue = selector({
@@ -37,7 +37,7 @@ describe('Selector and Store', () => {
         expect({ values, nCalled }).toEqual({ values: [4, 4, 49, 49], nCalled: 2 });
       });
 
-      it('re-computes value (indirect dependency changes)', () => {
+      it("re-computes value (indirect dependency changes)", () => {
         const numValue = block({ default: () => 2 });
         const squareValue = selector({
           get: ({ get }) => get(numValue) * get(numValue),
@@ -63,8 +63,8 @@ describe('Selector and Store', () => {
     });
   });
 
-  describe('store.remove', () => {
-    it('returns selector is remove or not', () => {
+  describe("store.remove", () => {
+    it("returns selector is remove or not", () => {
       const countValue = selector({ get: () => 0 });
       const store = createStore();
 
@@ -75,8 +75,8 @@ describe('Selector and Store', () => {
       expect([removed1, removed2]).toEqual([true, false]);
     });
 
-    describe('when cache invalidation listener exists', () => {
-      it('removes listeners as well', () => {
+    describe("when cache invalidation listener exists", () => {
+      it("removes listeners as well", () => {
         const numValue = block({ default: () => 3 });
         const doubleValue = selector({ get: ({ get }) => get(numValue) * 2 });
         const store = createStore();
@@ -91,9 +91,9 @@ describe('Selector and Store', () => {
     });
   });
 
-  describe('store.onSelectorCacheInvalidate', () => {
-    it('notifies listeners when selector cache becomes invalidated', () => {
-      const messageValue = block({ default: () => 'default' });
+  describe("store.onSelectorCacheInvalidate", () => {
+    it("notifies listeners when selector cache becomes invalidated", () => {
+      const messageValue = block({ default: () => "default" });
       const upperValue = selector({ get: ({ get }) => get(messageValue).toUpperCase() });
       const store = createStore();
       const listeners = [jest.fn(), jest.fn()];
@@ -102,19 +102,19 @@ describe('Selector and Store', () => {
       // Cache the first result value.
       store.getValue(upperValue);
       // Invalidate the cache.
-      store.setValue(messageValue, 'new_message');
+      store.setValue(messageValue, "new_message");
       // Rechange the block value but this does not cause a invalidation
       // because the cache is already invalidated.
-      store.setValue(messageValue, 'new_message2');
+      store.setValue(messageValue, "new_message2");
       store.getValue(upperValue);
 
       store.remove(upperValue);
       store.getValue(upperValue);
-      store.setValue(messageValue, 'last');
+      store.setValue(messageValue, "last");
 
       const expectedCalls: [SelectorCacheInvalidateEvent<string>][] = [
-        [{ last: { value: 'DEFAULT' } }],
-        [{ last: { value: 'NEW_MESSAGE2' }, removed: true }],
+        [{ last: { value: "DEFAULT" } }],
+        [{ last: { value: "NEW_MESSAGE2" }, removed: true }],
         // No events after removed.
       ];
       listeners.forEach((l) => {
@@ -123,8 +123,8 @@ describe('Selector and Store', () => {
     });
   });
 
-  describe('store.getCacheValue', () => {
-    it('returns cache value', () => {
+  describe("store.getCacheValue", () => {
+    it("returns cache value", () => {
       const constValue = selector({ get: () => 123 });
       const store = createStore();
 

@@ -1,6 +1,6 @@
 export type Comparer<T> = (a: T, b: T) => boolean;
 
-export type BlockUpdateEvent<T> = { type: 'NewValue'; value: T } | { type: 'Removed' };
+export type BlockUpdateEvent<T> = { type: "NewValue"; value: T } | { type: "Removed" };
 
 export interface BlockConfig<T, Ctx> {
   readonly default: (ctx?: Ctx) => T;
