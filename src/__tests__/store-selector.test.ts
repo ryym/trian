@@ -91,6 +91,37 @@ describe("Selector and Store", () => {
     });
   });
 
+  describe("store.delete", () => {
+    it("returns whether selector is deleted or not", () => {
+      const countValue = selector({ get: () => 0 });
+      const store = createStore();
+
+      store.getValue(countValue);
+      const deleted1 = store.delete(countValue);
+      const deleted2 = store.delete(countValue);
+
+      expect([deleted1, deleted2]).toEqual([true, false]);
+    });
+
+    describe("when cache invalidation listener exists", () => {
+      it("throws error", () => {
+        const numValue = selector({ get: () => 3 });
+        const doubleValue = selector({ get: ({ get }) => get(numValue) * 2 });
+        const store = createStore();
+
+        // Subscribe the numValue.
+        expect(store.getValue(doubleValue)).toEqual(6);
+
+        expect(() => {
+          store.delete(numValue);
+        }).toThrow(/cannot delete subscribed selector/);
+
+        store.delete(doubleValue);
+        expect(store.delete(numValue)).toBe(true);
+      });
+    });
+  });
+
   describe("store.onSelectorCacheInvalidate", () => {
     it("notifies listeners when selector cache becomes invalidated", () => {
       const messageValue = block({ default: () => "default" });

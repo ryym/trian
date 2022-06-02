@@ -96,6 +96,47 @@ describe("Block and Store", () => {
     });
   });
 
+  describe("store.delete", () => {
+    it("deletes block from store", () => {
+      const countValue = block({ default: () => 0 });
+      const store = createStore();
+
+      store.setValue(countValue, 100);
+      const valueBeforeDelete = store.getValue(countValue);
+      store.delete(countValue);
+      const valueAfterDelete = store.getValue(countValue);
+
+      expect([valueBeforeDelete, valueAfterDelete]).toEqual([100, 0]);
+    });
+
+    it("returns whether block is deleted or not", () => {
+      const countValue = block({ default: () => 0 });
+      const store = createStore();
+
+      store.getValue(countValue);
+      const deleted1 = store.delete(countValue);
+      const deleted2 = store.delete(countValue);
+
+      expect([deleted1, deleted2]).toEqual([true, false]);
+    });
+
+    describe("when update listener exists", () => {
+      it("throws error", () => {
+        const countValue = block({ default: () => 0 });
+        const store = createStore();
+        const listener = jest.fn();
+
+        const unsubscribe = store.onBlockUpdate(countValue, listener);
+        expect(() => {
+          store.delete(countValue);
+        }).toThrow(/cannot delete subscribed block/);
+
+        unsubscribe();
+        expect(store.delete(countValue)).toBe(true);
+      });
+    });
+  });
+
   describe("store.onBlockUpdate", () => {
     it("notifies listeners when block value changes", () => {
       const countValue = block({ default: () => 0 });

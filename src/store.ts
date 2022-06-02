@@ -45,6 +45,13 @@ const initSelectorState = <T>(): SelectorState<T> => {
   };
 };
 
+export class ActiveValueDeletionError extends Error {
+  constructor(key: AnyGetKey<any>, listenerCount: number) {
+    const valueType = key instanceof Block ? "block" : "selector";
+    super(`cannot delete subscribed ${valueType} (${listenerCount} listeners exist)`);
+  }
+}
+
 export class Store<BlockCtx> {
   private readonly blockStates: Map<Block<any>, BlockState<any>> = new Map();
 
@@ -262,6 +269,39 @@ export class Store<BlockCtx> {
     }
     state.current = value;
     state.changeListeners.forEach((f) => f({ type: "NewValue", value }));
+  };
+
+  delete = (key: AnyGetKey<any>): boolean => {
+    if (key instanceof Block) {
+      return this.deleteBlock(key);
+    } else {
+      return this.deleteSelector(key);
+    }
+  };
+
+  private deleteBlock = (block: Block<any>): boolean => {
+    const state = this.blockStates.get(block);
+    if (state == null) {
+      return false;
+    }
+    if (0 < state.changeListeners.length) {
+      throw new ActiveValueDeletionError(block, state.changeListeners.length);
+    }
+    this.blockStates.delete(block);
+    return true;
+  };
+
+  private deleteSelector = (selector: AnySelector<any>): boolean => {
+    const state = this.selectorStates.get(selector);
+    if (state == null) {
+      return false;
+    }
+    if (0 < state.invalidationListeners.length) {
+      throw new ActiveValueDeletionError(selector, state.invalidationListeners.length);
+    }
+    this.selectorStates.delete(selector);
+    state.dependencies.forEach((d) => d.unsubscribe());
+    return true;
   };
 
   remove = (key: AnyGetKey<any>): boolean => {
