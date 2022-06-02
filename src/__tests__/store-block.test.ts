@@ -135,6 +135,19 @@ describe("Block and Store", () => {
         expect(store.delete(countValue)).toBe(true);
       });
     });
+
+    describe("when deletion listener exists", () => {
+      it("calls listeners with last value", () => {
+        const countValue = block({ default: () => 0 });
+        const store = createStore();
+        const listener = jest.fn();
+        store.onBlockDelete(countValue, listener);
+
+        store.setValue(countValue, 5);
+        store.delete(countValue);
+        expect(listener.mock.calls).toEqual([[{ lastValue: 5 }]]);
+      });
+    });
   });
 
   describe("store.onBlockUpdate", () => {

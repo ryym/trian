@@ -15,11 +15,16 @@ export type SelectorCacheInvalidateEvent<T> = {
   removed?: boolean;
 };
 
+export interface SelectorDeletionEvent<T> {
+  last: null | { value: T };
+}
+
 export interface SelectorConfig<T> {
   readonly name?: string;
   readonly get: SelectorFn<T>;
   readonly isSame?: Comparer<T>;
   readonly onCacheInvalidate?: (event: SelectorCacheInvalidateEvent<T>) => void;
+  readonly onDelete?: (event: SelectorDeletionEvent<T>) => void;
 }
 
 export class Selector<T> {
@@ -27,12 +32,14 @@ export class Selector<T> {
   private readonly fn: SelectorFn<T>;
   readonly isSame: Comparer<T>;
   readonly onCacheInvalidate?: (event: SelectorCacheInvalidateEvent<T>) => void;
+  readonly onDelete?: (event: SelectorDeletionEvent<T>) => void;
 
   constructor(config: SelectorConfig<T>) {
     this.name = config.name;
     this.fn = config.get;
     this.isSame = config.isSame || Object.is;
     this.onCacheInvalidate = config.onCacheInvalidate;
+    this.onDelete = config.onDelete;
   }
 
   run(params: SelectorFnParams): T {
@@ -61,6 +68,7 @@ export interface AsyncSelectorConfig<T> {
   readonly get: AsyncSelectorFn<T>;
   readonly isSame?: Comparer<T>;
   readonly onCacheInvalidate?: (event: SelectorCacheInvalidateEvent<T>) => void;
+  readonly onDelete?: (event: SelectorDeletionEvent<T>) => void;
 }
 
 export class AsyncSelector<T> {
@@ -68,12 +76,14 @@ export class AsyncSelector<T> {
   private readonly fn: AsyncSelectorFn<T>;
   readonly isSame: Comparer<T>;
   readonly onCacheInvalidate?: (event: SelectorCacheInvalidateEvent<T>) => void;
+  readonly onDelete?: (event: SelectorDeletionEvent<T>) => void;
 
   constructor(config: AsyncSelectorConfig<T>) {
     this.name = config.name;
     this.fn = config.get;
     this.isSame = config.isSame || Object.is;
     this.onCacheInvalidate = config.onCacheInvalidate;
+    this.onDelete = config.onDelete;
   }
 
   run(params: AsyncSelectorFnParams): Promise<T> {

@@ -1,4 +1,4 @@
-import { Block, BlockUpdateEvent } from "./block";
+import { Block, BlockDeletionEvent, BlockUpdateEvent } from "./block";
 import {
   Selector,
   AsyncSelector,
@@ -6,6 +6,7 @@ import {
   AnyGetKey,
   AnyGetResult,
   AnySelector,
+  SelectorDeletionEvent,
 } from "./selector";
 
 export type UpdateValue<T> = (value: T) => T;
@@ -17,12 +18,14 @@ export type EventListener<E> = (event: E) => void;
 export interface BlockState<T> {
   current: T;
   changeListeners: EventListener<BlockUpdateEvent<T>>[];
+  deletionListeners: EventListener<BlockDeletionEvent<T>>[];
 }
 
 export interface SelectorState<T> {
   cache: SelectorCache<T>;
   updating: SelectorUpdating<T> | null;
   invalidationListeners: EventListener<SelectorCacheInvalidateEvent<T>>[];
+  deletionListeners: EventListener<SelectorDeletionEvent<T>>[];
   dependencies: Array<{ unsubscribe: Unsubscribe }>;
 }
 
@@ -41,6 +44,7 @@ const initSelectorState = <T>(): SelectorState<T> => {
     cache: { isFresh: false, last: null },
     updating: null,
     invalidationListeners: [],
+    deletionListeners: [],
     dependencies: [],
   };
 };
@@ -66,9 +70,16 @@ export class Store<BlockCtx> {
   private getBlockState<T>(block: Block<T>): BlockState<T> {
     let state = this.blockStates.get(block);
     if (state == null) {
-      state = { current: block.default(this.blockContext), changeListeners: [] };
+      state = {
+        current: block.default(this.blockContext),
+        changeListeners: [],
+        deletionListeners: [],
+      };
       if (block.onUpdate != null) {
         state.changeListeners.push(block.onUpdate);
+      }
+      if (block.onDelete != null) {
+        state.deletionListeners.push(block.onDelete);
       }
       this.blockStates.set(block, state);
     }
@@ -205,6 +216,9 @@ export class Store<BlockCtx> {
       if (selector.onCacheInvalidate != null) {
         state.invalidationListeners.push(selector.onCacheInvalidate);
       }
+      if (selector.onDelete != null) {
+        state.deletionListeners.push(selector.onDelete);
+      }
       this.selectorStates.set(selector, state);
     }
     return state;
@@ -237,6 +251,17 @@ export class Store<BlockCtx> {
     };
   };
 
+  onBlockDelete = <T>(
+    block: Block<T>,
+    listener: (event: BlockDeletionEvent<T>) => void,
+  ): Unsubscribe => {
+    const state = this.getBlockState(block);
+    state.deletionListeners.push(listener);
+    return function unsubscribe() {
+      state.deletionListeners = state.deletionListeners.filter((f) => f !== listener);
+    };
+  };
+
   onSelectorCacheInvalidate = <T>(
     key: AnySelector<T>,
     listener: EventListener<SelectorCacheInvalidateEvent<T>>,
@@ -245,6 +270,17 @@ export class Store<BlockCtx> {
     state.invalidationListeners.push(listener);
     return function unsubscribe() {
       state.invalidationListeners = state.invalidationListeners.filter((f) => f !== listener);
+    };
+  };
+
+  onSelectorDelete = <T>(
+    selector: AnySelector<T>,
+    listener: (event: SelectorDeletionEvent<T>) => void,
+  ): Unsubscribe => {
+    const state = this.getSelectorState(selector);
+    state.deletionListeners.push(listener);
+    return function unsubscribe() {
+      state.deletionListeners = state.deletionListeners.filter((f) => f !== listener);
     };
   };
 
@@ -288,6 +324,7 @@ export class Store<BlockCtx> {
       throw new ActiveValueDeletionError(block, state.changeListeners.length);
     }
     this.blockStates.delete(block);
+    state.deletionListeners.forEach((f) => f({ lastValue: state.current }));
     return true;
   };
 
@@ -301,6 +338,9 @@ export class Store<BlockCtx> {
     }
     this.selectorStates.delete(selector);
     state.dependencies.forEach((d) => d.unsubscribe());
+    const { cache } = state;
+    const last = cache.isFresh ? { value: cache.value } : cache.last;
+    state.deletionListeners.forEach((f) => f({ last }));
     return true;
   };
 

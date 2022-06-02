@@ -120,6 +120,19 @@ describe("Selector and Store", () => {
         expect(store.delete(numValue)).toBe(true);
       });
     });
+
+    describe("when deletion listener exists", () => {
+      it("calls listeners with last value", () => {
+        const countValue = selector({ get: () => 3 });
+        const store = createStore();
+        const listener = jest.fn();
+        store.onSelectorDelete(countValue, listener);
+
+        expect(store.getValue(countValue)).toEqual(3);
+        store.delete(countValue);
+        expect(listener.mock.calls).toEqual([[{ last: { value: 3 } }]]);
+      });
+    });
   });
 
   describe("store.onSelectorCacheInvalidate", () => {
