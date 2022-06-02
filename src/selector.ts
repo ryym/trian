@@ -10,13 +10,12 @@ export interface SelectorFnParams {
 
 export type SelectorFn<T> = (params: SelectorFnParams) => T;
 
-export type SelectorCacheInvalidateEvent<T> = {
-  last: null | { value: T };
-  removed?: boolean;
-};
+export interface SelectorCacheInvalidateEvent<T> {
+  readonly last: null | { value: T };
+}
 
 export interface SelectorDeletionEvent<T> {
-  last: null | { value: T };
+  readonly last: null | { value: T };
 }
 
 export interface SelectorConfig<T> {

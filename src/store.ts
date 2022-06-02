@@ -343,36 +343,6 @@ export class Store<BlockCtx> {
     state.deletionListeners.forEach((f) => f({ last }));
     return true;
   };
-
-  remove = (key: AnyGetKey<any>): boolean => {
-    if (key instanceof Block) {
-      return this.removeBlock(key);
-    } else {
-      return this.removeSelector(key);
-    }
-  };
-
-  private removeBlock = (block: Block<any>): boolean => {
-    const state = this.blockStates.get(block);
-    if (state == null) {
-      return false;
-    }
-    this.blockStates.delete(block);
-    state.changeListeners.forEach((f) => f({ type: "Removed" }));
-    return true;
-  };
-
-  private removeSelector = (selector: AnySelector<any>): boolean => {
-    const state = this.selectorStates.get(selector);
-    if (state == null) {
-      return false;
-    }
-    this.selectorStates.delete(selector);
-    state.dependencies.forEach((d) => d.unsubscribe());
-    const last = state.cache.isFresh ? { value: state.cache.value } : state.cache.last;
-    state.invalidationListeners.forEach((f) => f({ last, removed: true }));
-    return true;
-  };
 }
 
 export const createStore = <BlockCtx = undefined>(

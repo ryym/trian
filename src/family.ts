@@ -28,7 +28,7 @@ export class Family<V, Args extends unknown[]> {
     return [...this.keyToMember.keys()];
   };
 
-  remove = (...args: Args): boolean => {
+  delete = (...args: Args): boolean => {
     const key = this.key(...args);
     return this.keyToMember.delete(key);
   };

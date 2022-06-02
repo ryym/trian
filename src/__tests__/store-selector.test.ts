@@ -63,34 +63,6 @@ describe("Selector and Store", () => {
     });
   });
 
-  describe("store.remove", () => {
-    it("returns selector is remove or not", () => {
-      const countValue = selector({ get: () => 0 });
-      const store = createStore();
-
-      store.getValue(countValue);
-      const removed1 = store.remove(countValue);
-      const removed2 = store.remove(countValue);
-
-      expect([removed1, removed2]).toEqual([true, false]);
-    });
-
-    describe("when cache invalidation listener exists", () => {
-      it("removes listeners as well", () => {
-        const numValue = block({ default: () => 3 });
-        const doubleValue = selector({ get: ({ get }) => get(numValue) * 2 });
-        const store = createStore();
-        const listener = jest.fn();
-
-        store.onSelectorCacheInvalidate(doubleValue, listener);
-        store.remove(doubleValue);
-        store.setValue(numValue, 10);
-
-        expect(listener.mock.calls.length).toEqual(1);
-      });
-    });
-  });
-
   describe("store.delete", () => {
     it("returns whether selector is deleted or not", () => {
       const countValue = selector({ get: () => 0 });
@@ -152,14 +124,11 @@ describe("Selector and Store", () => {
       store.setValue(messageValue, "new_message2");
       store.getValue(upperValue);
 
-      store.remove(upperValue);
-      store.getValue(upperValue);
-      store.setValue(messageValue, "last");
+      store.setValue(messageValue, "new_message3");
 
       const expectedCalls: [SelectorCacheInvalidateEvent<string>][] = [
         [{ last: { value: "DEFAULT" } }],
-        [{ last: { value: "NEW_MESSAGE2" }, removed: true }],
-        // No events after removed.
+        [{ last: { value: "NEW_MESSAGE2" } }],
       ];
       listeners.forEach((l) => {
         expect(l.mock.calls).toEqual(expectedCalls);

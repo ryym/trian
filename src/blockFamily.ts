@@ -15,11 +15,10 @@ export const blockFamily = <T, Ctx, Args extends unknown[]>(
       const blockConfig = config.block(...args);
       return block({
         ...blockConfig,
-        onUpdate: (event) => {
-          blockConfig.onUpdate && blockConfig.onUpdate(event);
-          if (event.type === "Removed") {
-            family.remove(...args);
-          }
+        onUpdate: blockConfig.onUpdate,
+        onDelete: (event) => {
+          blockConfig.onDelete && blockConfig.onDelete(event);
+          family.delete(...args);
         },
       });
     },

@@ -28,11 +28,10 @@ const createSelectorFamilyCreator = () => {
         const selectorConfig = config.selector(...args);
         return selector({
           ...selectorConfig,
-          onCacheInvalidate: (event) => {
-            selectorConfig.onCacheInvalidate && selectorConfig.onCacheInvalidate(event);
-            if (event.removed) {
-              family.remove(...args);
-            }
+          onCacheInvalidate: selectorConfig.onCacheInvalidate,
+          onDelete: (event) => {
+            selectorConfig.onDelete && selectorConfig.onDelete(event);
+            family.delete(...args);
           },
         });
       },
@@ -49,11 +48,10 @@ const createSelectorFamilyCreator = () => {
         const selectorConfig = config.selector(...args);
         return selector.async({
           ...selectorConfig,
-          onCacheInvalidate: (event) => {
-            selectorConfig.onCacheInvalidate && selectorConfig.onCacheInvalidate(event);
-            if (event.removed) {
-              family.remove(...args);
-            }
+          onCacheInvalidate: selectorConfig.onCacheInvalidate,
+          onDelete: (event) => {
+            selectorConfig.onDelete && selectorConfig.onDelete(event);
+            family.delete(...args);
           },
         });
       },

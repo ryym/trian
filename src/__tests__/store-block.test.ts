@@ -56,46 +56,6 @@ describe("Block and Store", () => {
     });
   });
 
-  describe("store.remove", () => {
-    it("removes block from store", () => {
-      const countValue = block({ default: () => 0 });
-      const store = createStore();
-
-      store.setValue(countValue, 100);
-      const valueBeforeRemove = store.getValue(countValue);
-      store.remove(countValue);
-      const valueAfterRemove = store.getValue(countValue);
-
-      expect([valueBeforeRemove, valueAfterRemove]).toEqual([100, 0]);
-    });
-
-    it("returns block is remove or not", () => {
-      const countValue = block({ default: () => 0 });
-      const store = createStore();
-
-      store.getValue(countValue);
-      const removed1 = store.remove(countValue);
-      const removed2 = store.remove(countValue);
-
-      expect([removed1, removed2]).toEqual([true, false]);
-    });
-
-    describe("when update listener exists", () => {
-      it("removes listeners as well", () => {
-        const countValue = block({ default: () => 0 });
-        const store = createStore();
-        const listener = jest.fn();
-
-        store.onBlockUpdate(countValue, listener);
-        store.remove(countValue);
-        store.setValue(countValue, 5);
-        store.setValue(countValue, 6);
-
-        expect(listener.mock.calls.length).toEqual(1);
-      });
-    });
-  });
-
   describe("store.delete", () => {
     it("deletes block from store", () => {
       const countValue = block({ default: () => 0 });
@@ -159,14 +119,12 @@ describe("Block and Store", () => {
       listeners.forEach((l) => store.onBlockUpdate(countValue, l));
       store.setValue(countValue, 10);
       store.setValue(countValue, -128);
-      store.remove(countValue);
       store.setValue(countValue, 5);
 
       const expectedCalls: [BlockUpdateEvent<number>][] = [
         [{ type: "NewValue", value: 10 }],
         [{ type: "NewValue", value: -128 }],
-        [{ type: "Removed" }],
-        // No events after removed.
+        [{ type: "NewValue", value: 5 }],
       ];
       listeners.forEach((l) => {
         expect(l.mock.calls).toEqual(expectedCalls);
