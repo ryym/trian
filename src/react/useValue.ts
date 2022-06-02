@@ -3,8 +3,10 @@ import { useTrianContext } from "./context";
 import { Block } from "../block";
 import { Selector } from "../selector";
 
-export const useValue = <T>(key: Block<T> | Selector<T>): T => {
+export const useValue = <T>(passedKey: Block<T> | Selector<T>): T => {
   const { store } = useTrianContext();
+  const [key] = useState(passedKey);
+
   const [value, setValue] = useState(store.getValue(key));
 
   useEffect(() => {

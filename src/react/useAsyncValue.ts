@@ -20,8 +20,9 @@ export type AsyncResult<T> =
       loading: false;
     };
 
-export const useAsyncValue = <T>(selector: AsyncSelector<T>): AsyncResult<T> => {
+export const useAsyncValue = <T>(passedSelector: AsyncSelector<T>): AsyncResult<T> => {
   const { store } = useTrianContext();
+  const [selector] = useState(passedSelector);
 
   const [result, setResult] = useState<AsyncResult<T>>(() => {
     const cache = store.getCacheValue(selector);
