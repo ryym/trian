@@ -21,12 +21,23 @@ export interface BlockState<T> {
   deletionListeners: EventListener<BlockDeletionEvent<T>>[];
 }
 
-export interface SelectorState<T> {
+export interface AnySelectorState<T> {
   cache: SelectorCache<T>;
-  updating: SelectorUpdating<T> | null;
   invalidationListeners: EventListener<SelectorCacheInvalidateEvent<T>>[];
   deletionListeners: EventListener<SelectorDeletionEvent<T>>[];
-  dependencies: Array<{ unsubscribe: Unsubscribe }>;
+}
+
+export interface SelectorState<T> extends AnySelectorState<T> {
+  dependencies: SelectorDependency[];
+}
+
+export interface SelectorDependency {
+  readonly unsubscribe: Unsubscribe;
+}
+
+export interface AsyncSelectorState<T> extends AnySelectorState<T> {
+  updating: SelectorUpdating<T> | null;
+  dependencies: SelectorDependency[];
 }
 
 export type SelectorCache<T> =
@@ -40,6 +51,15 @@ export interface SelectorUpdating<T> {
 }
 
 const initSelectorState = <T>(): SelectorState<T> => {
+  return {
+    cache: { isFresh: false, last: null },
+    invalidationListeners: [],
+    deletionListeners: [],
+    dependencies: [],
+  };
+};
+
+const initAsyncSelectorState = <T>(): AsyncSelectorState<T> => {
   return {
     cache: { isFresh: false, last: null },
     updating: null,
@@ -57,33 +77,45 @@ export class ActiveValueDeletionError extends Error {
 }
 
 export class Store<BlockCtx> {
-  private readonly blockStates: Map<Block<any>, BlockState<any>> = new Map();
+  private readonly blockStates = new Map<Block<any>, BlockState<any>>();
 
   private readonly blockContext: BlockCtx;
 
-  private readonly selectorStates: Map<AnySelector<any>, SelectorState<any>> = new Map();
+  private readonly selectorStates = new Map<Selector<any>, SelectorState<any>>();
+  private readonly asyncSelectorStates = new Map<AsyncSelector<any>, AsyncSelectorState<any>>();
 
   constructor(blockContext: BlockCtx) {
     this.blockContext = blockContext;
   }
 
   private getBlockState<T>(block: Block<T>): BlockState<T> {
-    let state = this.blockStates.get(block);
-    if (state == null) {
-      state = {
-        current: block.default(this.blockContext),
-        changeListeners: [],
-        deletionListeners: [],
-      };
-      if (block.onUpdate != null) {
-        state.changeListeners.push(block.onUpdate);
-      }
-      if (block.onDelete != null) {
-        state.deletionListeners.push(block.onDelete);
-      }
-      this.blockStates.set(block, state);
-    }
+    const [state] = this.getOrInitBlockState(block, null);
     return state;
+  }
+
+  private getOrInitBlockState<T>(
+    block: Block<T>,
+    initialValue: null | (() => T),
+  ): [state: BlockState<T>, initialized: boolean] {
+    let state = this.blockStates.get(block);
+    if (state != null) {
+      return [state, false];
+    }
+
+    const value = initialValue == null ? block.default(this.blockContext) : initialValue();
+    state = {
+      current: value,
+      changeListeners: [],
+      deletionListeners: [],
+    };
+    if (block.onUpdate != null) {
+      state.changeListeners.push(block.onUpdate);
+    }
+    if (block.onDelete != null) {
+      state.deletionListeners.push(block.onDelete);
+    }
+    this.blockStates.set(block, state);
+    return [state, true];
   }
 
   getValue = <T>(key: Block<T> | Selector<T>): T => {
@@ -135,7 +167,7 @@ export class Store<BlockCtx> {
   };
 
   getAsyncValue = async <T>(selector: AsyncSelector<T>): Promise<T> => {
-    const state = this.getSelectorState(selector);
+    const state = this.getAsyncSelectorState(selector);
     if (state.cache.isFresh) {
       return Promise.resolve(state.cache.value);
     }
@@ -149,7 +181,7 @@ export class Store<BlockCtx> {
         // But if some dependencies are updated, we should re-compute the value. To do so,
         // we discard the current computation by replacing the selector state with a new one.
         state.updating.isDiscarded = true;
-        this.selectorStates.set(selector, initSelectorState());
+        this.asyncSelectorStates.set(selector, initAsyncSelectorState());
         return this.getAsyncValue(selector);
       }
     }
@@ -170,6 +202,7 @@ export class Store<BlockCtx> {
 
     const get = <K extends AnyGetKey<any>>(key: K): AnyGetResult<K> => {
       const unsubscribe = this.onInvalidate(key, invalidateCache);
+      const value = this.getAnyValue(key);
       state.dependencies.push({ unsubscribe });
       return this.getAnyValue(key);
     };
@@ -209,7 +242,15 @@ export class Store<BlockCtx> {
     }
   };
 
-  private getSelectorState<T>(selector: AnySelector<T>): SelectorState<T> {
+  private getAnySelectorState<T>(selector: AnySelector<T>): AnySelectorState<T> {
+    if (selector instanceof AsyncSelector) {
+      return this.getAsyncSelectorState(selector);
+    } else {
+      return this.getSelectorState(selector);
+    }
+  }
+
+  private getSelectorState<T>(selector: Selector<T>): SelectorState<T> {
     let state = this.selectorStates.get(selector);
     if (state == null) {
       state = initSelectorState();
@@ -224,8 +265,23 @@ export class Store<BlockCtx> {
     return state;
   }
 
+  private getAsyncSelectorState<T>(selector: AsyncSelector<T>): AsyncSelectorState<T> {
+    let state = this.asyncSelectorStates.get(selector);
+    if (state == null) {
+      state = initAsyncSelectorState();
+      if (selector.onCacheInvalidate != null) {
+        state.invalidationListeners.push(selector.onCacheInvalidate);
+      }
+      if (selector.onDelete != null) {
+        state.deletionListeners.push(selector.onDelete);
+      }
+      this.asyncSelectorStates.set(selector, state);
+    }
+    return state;
+  }
+
   isFreshCache = <T>(key: AsyncSelector<T>, value: T): boolean => {
-    const state = this.getSelectorState(key);
+    const state = this.getAnySelectorState(key);
     return state.cache.isFresh && state.cache.value === value;
   };
 
@@ -266,7 +322,7 @@ export class Store<BlockCtx> {
     key: AnySelector<T>,
     listener: EventListener<SelectorCacheInvalidateEvent<T>>,
   ): Unsubscribe => {
-    const state = this.getSelectorState(key);
+    const state = this.getAnySelectorState(key);
     state.invalidationListeners.push(listener);
     return function unsubscribe() {
       state.invalidationListeners = state.invalidationListeners.filter((f) => f !== listener);
@@ -277,7 +333,7 @@ export class Store<BlockCtx> {
     selector: AnySelector<T>,
     listener: (event: SelectorDeletionEvent<T>) => void,
   ): Unsubscribe => {
-    const state = this.getSelectorState(selector);
+    const state = this.getAnySelectorState(selector);
     state.deletionListeners.push(listener);
     return function unsubscribe() {
       state.deletionListeners = state.deletionListeners.filter((f) => f !== listener);
@@ -285,7 +341,7 @@ export class Store<BlockCtx> {
   };
 
   getCacheValue = <T>(selector: AnySelector<T>): { value: T } | null => {
-    const cache = this.getSelectorState(selector).cache;
+    const cache = this.getAnySelectorState(selector).cache;
     return cache.isFresh ? { value: cache.value } : null;
   };
 
@@ -307,11 +363,19 @@ export class Store<BlockCtx> {
     state.changeListeners.forEach((f) => f({ type: "NewValue", value }));
   };
 
+  trySetInitialValue = <T>(
+    block: Block<T>,
+    initialValue: () => T,
+  ): [value: T, initialized: boolean] => {
+    const [state, initialized] = this.getOrInitBlockState(block, initialValue);
+    return [state.current, initialized];
+  };
+
   delete = (key: AnyGetKey<any>): boolean => {
     if (key instanceof Block) {
       return this.deleteBlock(key);
     } else {
-      return this.deleteSelector(key);
+      return this.deleteAnySelector(key);
     }
   };
 
@@ -328,7 +392,15 @@ export class Store<BlockCtx> {
     return true;
   };
 
-  private deleteSelector = (selector: AnySelector<any>): boolean => {
+  private deleteAnySelector = (selector: AnySelector<any>): boolean => {
+    if (selector instanceof AsyncSelector) {
+      return this.deleteAsyncSelector(selector);
+    } else {
+      return this.deleteSelector(selector);
+    }
+  };
+
+  private deleteSelector = (selector: Selector<any>): boolean => {
     const state = this.selectorStates.get(selector);
     if (state == null) {
       return false;
@@ -337,6 +409,22 @@ export class Store<BlockCtx> {
       throw new ActiveValueDeletionError(selector, state.invalidationListeners.length);
     }
     this.selectorStates.delete(selector);
+    state.dependencies.forEach((d) => d.unsubscribe());
+    const { cache } = state;
+    const last = cache.isFresh ? { value: cache.value } : cache.last;
+    state.deletionListeners.forEach((f) => f({ last }));
+    return true;
+  };
+
+  private deleteAsyncSelector = (selector: AsyncSelector<any>): boolean => {
+    const state = this.asyncSelectorStates.get(selector);
+    if (state == null) {
+      return false;
+    }
+    if (0 < state.invalidationListeners.length) {
+      throw new ActiveValueDeletionError(selector, state.invalidationListeners.length);
+    }
+    this.asyncSelectorStates.delete(selector);
     state.dependencies.forEach((d) => d.unsubscribe());
     const { cache } = state;
     const last = cache.isFresh ? { value: cache.value } : cache.last;
