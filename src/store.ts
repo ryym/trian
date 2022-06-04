@@ -28,16 +28,22 @@ export interface AnySelectorState<T> {
 }
 
 export interface SelectorState<T> extends AnySelectorState<T> {
-  dependencies: SelectorDependency[];
+  dependencies: SelectorDependency<any>[];
 }
 
-export interface SelectorDependency {
+export interface SelectorDependency<T> {
+  readonly key: Block<T> | Selector<T>;
+  readonly lastValue: T;
   readonly unsubscribe: Unsubscribe;
 }
 
 export interface AsyncSelectorState<T> extends AnySelectorState<T> {
   updating: SelectorUpdating<T> | null;
-  dependencies: SelectorDependency[];
+  dependencies: AsyncSelectorDependency[];
+}
+
+export interface AsyncSelectorDependency {
+  readonly unsubscribe: Unsubscribe;
 }
 
 export type SelectorCache<T> =
@@ -138,6 +144,24 @@ export class Store<BlockCtx> {
       return state.cache.value;
     }
 
+    // If the cache exists and any dependencies does not change,
+    // treat the current cache as a fresh value.
+    if (state.cache.last != null) {
+      let areDepsSame = true;
+      for (const dep of state.dependencies) {
+        const value = this.getValue(dep.key);
+        if (value !== dep.lastValue) {
+          areDepsSame = false;
+          break;
+        }
+      }
+      if (areDepsSame) {
+        const value = state.cache.last.value;
+        state.cache = { isFresh: true, value };
+        return value;
+      }
+    }
+
     state.dependencies.forEach((d) => d.unsubscribe());
     state.dependencies = [];
 
@@ -151,8 +175,9 @@ export class Store<BlockCtx> {
 
     const get = <U>(key: Block<U> | Selector<U>): U => {
       const unsubscribe = this.onInvalidate(key, invalidateCache);
-      state.dependencies.push({ unsubscribe });
-      return this.getValue(key);
+      const value = this.getValue(key);
+      state.dependencies.push({ key, unsubscribe, lastValue: value });
+      return value;
     };
 
     let value = selector.run({ get });

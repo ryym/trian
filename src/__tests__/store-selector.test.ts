@@ -60,6 +60,22 @@ describe("Selector and Store", () => {
 
         expect({ values, nCalled }).toEqual({ values: [-4, -4, -81, -81], nCalled: 2 });
       });
+
+      it("does not re-compute value if dependencies are same", () => {
+        const nums = block({ default: () => [10, 20, 30] });
+        const firstNum = selector({ get: ({ get }) => get(nums)[0] });
+        const minusNum = selector({
+          get: ({ get }) => [get(firstNum) * -1],
+        });
+
+        const store = createStore();
+        const values: number[][] = [];
+        values.push(store.getValue(minusNum));
+        store.setValue(nums, [10, 20, 30, 40]); // firstNum stays same.
+        values.push(store.getValue(minusNum));
+        expect(values).toEqual([[-10], [-10]]);
+        expect(values[0]).toBe(values[1]); // the final value keeps referencial equality.
+      });
     });
   });
 
