@@ -94,6 +94,20 @@ export class Store<BlockCtx> {
     this.blockContext = blockContext;
   }
 
+  getValue = <T>(key: Block<T> | Selector<T>): T => {
+    if (key instanceof Block) {
+      return this.getBlockValue(key);
+    } else if (key instanceof Selector) {
+      return this.getSelectorValue(key);
+    } else {
+      throw new Error(`[trian] Invalid store key: ${key}`);
+    }
+  };
+
+  private getBlockValue = <T>(block: Block<T>): T => {
+    return this.getBlockState(block).current;
+  };
+
   private getBlockState<T>(block: Block<T>): BlockState<T> {
     const [state] = this.getOrInitBlockState(block, null);
     return state;
@@ -123,20 +137,6 @@ export class Store<BlockCtx> {
     this.blockStates.set(block, state);
     return [state, true];
   }
-
-  getValue = <T>(key: Block<T> | Selector<T>): T => {
-    if (key instanceof Block) {
-      return this.getBlockValue(key);
-    } else if (key instanceof Selector) {
-      return this.getSelectorValue(key);
-    } else {
-      throw new Error(`[trian] Invalid store key: ${key}`);
-    }
-  };
-
-  private getBlockValue = <T>(block: Block<T>): T => {
-    return this.getBlockState(block).current;
-  };
 
   private getSelectorValue = <T>(selector: Selector<T>): T => {
     const state = this.getSelectorState(selector);
@@ -189,6 +189,14 @@ export class Store<BlockCtx> {
 
     state.cache = { isFresh: true, value };
     return state.cache.value;
+  };
+
+  getAnyValue = <K extends AnyGetKey<any>>(key: K): AnyGetResult<K> => {
+    if (key instanceof AsyncSelector) {
+      return this.getAsyncValue(key as any) as AnyGetResult<K>;
+    } else {
+      return this.getValue(key as any);
+    }
   };
 
   getAsyncValue = async <T>(selector: AsyncSelector<T>): Promise<T> => {
@@ -257,14 +265,6 @@ export class Store<BlockCtx> {
 
     state.updating = null;
     return value;
-  };
-
-  getAnyValue = <K extends AnyGetKey<any>>(key: K): AnyGetResult<K> => {
-    if (key instanceof AsyncSelector) {
-      return this.getAsyncValue(key as any) as AnyGetResult<K>;
-    } else {
-      return this.getValue(key as any);
-    }
   };
 
   private getAnySelectorState<T>(selector: AnySelector<T>): AnySelectorState<T> {
