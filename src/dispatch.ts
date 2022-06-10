@@ -1,6 +1,6 @@
 import { Store, UpdateValue } from "./store";
 import { Block } from "./block";
-import { AnyGet, AnyGetKey } from "./selector";
+import { AnyGet, AnyGetKey } from "./loader";
 
 export const createDispatch = <Ctx>(store: Store<any>, ctx: Ctx): Dispatch<Ctx> => {
   function dispatch<As extends unknown[], R>(action: Action<As, R, Ctx>, ...args: As): R {
