@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useTrianContext } from "./context";
-import { AsyncSelector } from "../selector";
+import { Loader } from "../loader";
 
 export type AsyncResult<T> =
   | {
@@ -20,19 +20,19 @@ export type AsyncResult<T> =
       loading: false;
     };
 
-export const useAsyncValue = <T>(passedSelector: AsyncSelector<T>): AsyncResult<T> => {
+export const useAsyncValue = <T>(passedLoader: Loader<T>): AsyncResult<T> => {
   const { store } = useTrianContext();
-  const [selector] = useState(passedSelector);
+  const [loader] = useState(passedLoader);
 
   const [result, setResult] = useState<AsyncResult<T>>(() => {
-    const cache = store.getCacheValue(selector);
+    const cache = store.getCacheValue(loader);
     return cache != null
       ? { status: "Done", value: cache.value, loading: false }
       : { status: "Loading", loading: true };
   });
 
   useEffect(() => {
-    const unsubscribe = store.onInvalidate(selector, () => {
+    const unsubscribe = store.onInvalidate(loader, () => {
       setResult((result) => {
         const lastValue = result.status === "Done" ? result.value : undefined;
         return { status: "Loading", loading: true, value: lastValue };
@@ -46,7 +46,7 @@ export const useAsyncValue = <T>(passedSelector: AsyncSelector<T>): AsyncResult<
       return;
     }
     store
-      .getAsyncValue(selector)
+      .getAsyncValue(loader)
       .then((value) => setResult({ status: "Done", value, loading: false }))
       .catch((error) => setResult({ status: "Error", error, loading: false, value: undefined }));
   }, [result.loading]);
