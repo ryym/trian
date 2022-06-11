@@ -1,7 +1,7 @@
 export type Comparer<T> = (a: T, b: T) => boolean;
 
-export interface BlockUpdateEvent<T> {
-  readonly type: "NewValue";
+export interface BlockChangeEvent<T> {
+  readonly lastValue: T;
   readonly value: T;
 }
 
@@ -12,14 +12,14 @@ export interface BlockDeletionEvent<T> {
 export interface BlockConfig<T, Ctx> {
   readonly default: (ctx?: Ctx) => T;
   readonly isSame?: Comparer<T>;
-  readonly onUpdate?: (event: BlockUpdateEvent<T>) => void;
+  readonly onUpdate?: (event: BlockChangeEvent<T>) => void;
   readonly onDelete?: (event: BlockDeletionEvent<T>) => void;
 }
 
 export class Block<T, Ctx = any> {
   readonly default: (ctx?: Ctx) => T;
   readonly isSame: Comparer<T>;
-  readonly onUpdate?: (event: BlockUpdateEvent<T>) => void;
+  readonly onUpdate?: (event: BlockChangeEvent<T>) => void;
   readonly onDelete?: (event: BlockDeletionEvent<T>) => void;
 
   constructor(config: BlockConfig<T, Ctx>) {

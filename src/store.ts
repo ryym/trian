@@ -1,4 +1,4 @@
-import { Block, BlockDeletionEvent, BlockUpdateEvent } from "./block";
+import { Block, BlockDeletionEvent, BlockChangeEvent } from "./block";
 import { Loader, LoaderCacheInvalidateEvent, LoaderDeletionEvent } from "./loader";
 import { Selector, SelectorCacheInvalidateEvent, SelectorDeletionEvent } from "./selector";
 import { AnyGetKey, AnyGetResult } from "./loader";
@@ -13,7 +13,7 @@ export type CachableKey<T> = Selector<T> | Loader<T>;
 
 export interface BlockState<T> {
   current: T;
-  changeListeners: EventListener<BlockUpdateEvent<T>>[];
+  changeListeners: EventListener<BlockChangeEvent<T>>[];
   deletionListeners: EventListener<BlockDeletionEvent<T>>[];
 }
 
@@ -320,11 +320,11 @@ export class Store<BlockCtx> {
   onInvalidate = <T>(
     key: AnyGetKey<T>,
     listener: EventListener<
-      BlockUpdateEvent<T> | SelectorCacheInvalidateEvent<T> | LoaderCacheInvalidateEvent<T>
+      BlockChangeEvent<T> | SelectorCacheInvalidateEvent<T> | LoaderCacheInvalidateEvent<T>
     >,
   ): Unsubscribe => {
     if (key instanceof Block) {
-      return this.onBlockUpdate(key, listener);
+      return this.onBlockChange(key, listener);
     } else if (key instanceof Loader) {
       return this.onLoaderCacheInvalidate(key, listener);
     } else {
@@ -332,9 +332,9 @@ export class Store<BlockCtx> {
     }
   };
 
-  onBlockUpdate = <T>(
+  onBlockChange = <T>(
     block: Block<T>,
-    listener: (event: BlockUpdateEvent<T>) => void,
+    listener: (event: BlockChangeEvent<T>) => void,
   ): Unsubscribe => {
     const state = this.getBlockState(block);
     state.changeListeners.push(listener);
@@ -417,8 +417,9 @@ export class Store<BlockCtx> {
     if (block.isSame(state.current, value)) {
       return;
     }
+    const lastValue = state.current;
     state.current = value;
-    state.changeListeners.forEach((f) => f({ type: "NewValue", value }));
+    state.changeListeners.forEach((f) => f({ lastValue, value }));
   };
 
   trySetInitialValue = <T>(

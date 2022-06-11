@@ -1,4 +1,4 @@
-import { block, BlockUpdateEvent } from "../block";
+import { block, BlockChangeEvent } from "../block";
 import { createStore } from "../store";
 
 describe("Block and Store", () => {
@@ -86,7 +86,7 @@ describe("Block and Store", () => {
         const store = createStore();
         const listener = jest.fn();
 
-        const unsubscribe = store.onBlockUpdate(countValue, listener);
+        const unsubscribe = store.onBlockChange(countValue, listener);
         expect(() => {
           store.delete(countValue);
         }).toThrow(/cannot delete subscribed block/);
@@ -116,15 +116,15 @@ describe("Block and Store", () => {
       const store = createStore();
       const listeners = [jest.fn(), jest.fn()];
 
-      listeners.forEach((l) => store.onBlockUpdate(countValue, l));
+      listeners.forEach((l) => store.onBlockChange(countValue, l));
       store.setValue(countValue, 10);
       store.setValue(countValue, -128);
       store.setValue(countValue, 5);
 
-      const expectedCalls: [BlockUpdateEvent<number>][] = [
-        [{ type: "NewValue", value: 10 }],
-        [{ type: "NewValue", value: -128 }],
-        [{ type: "NewValue", value: 5 }],
+      const expectedCalls: [BlockChangeEvent<number>][] = [
+        [{ lastValue: 0, value: 10 }],
+        [{ lastValue: 10, value: -128 }],
+        [{ lastValue: -128, value: 5 }],
       ];
       listeners.forEach((l) => {
         expect(l.mock.calls).toEqual(expectedCalls);
