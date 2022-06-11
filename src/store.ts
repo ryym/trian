@@ -1,12 +1,6 @@
 import { Block, BlockDeletionEvent, BlockUpdateEvent } from "./block";
 import { Loader, LoaderCacheInvalidateEvent, LoaderDeletionEvent } from "./loader";
-import {
-  Selector,
-  AsyncSelector,
-  SelectorCacheInvalidateEvent,
-  AnySelector,
-  SelectorDeletionEvent,
-} from "./selector";
+import { Selector, SelectorCacheInvalidateEvent, SelectorDeletionEvent } from "./selector";
 import { AnyGetKey, AnyGetResult } from "./loader";
 
 export type UpdateValue<T> = (value: T) => T;
@@ -15,7 +9,7 @@ export type Unsubscribe = () => void;
 
 export type EventListener<E> = (event: E) => void;
 
-export type CachableKey<T> = Selector<T> | AsyncSelector<T> | Loader<T>;
+export type CachableKey<T> = Selector<T> | Loader<T>;
 
 export interface BlockState<T> {
   current: T;
@@ -36,15 +30,6 @@ export interface SelectorState<T> extends CachableState<T> {
 export interface SelectorDependency<T> {
   readonly key: Block<T> | Selector<T>;
   readonly lastValue: T;
-  readonly unsubscribe: Unsubscribe;
-}
-
-export interface AsyncSelectorState<T> extends CachableState<T> {
-  updating: SelectorUpdating<T> | null;
-  dependencies: AsyncSelectorDependency[];
-}
-
-export interface AsyncSelectorDependency {
   readonly unsubscribe: Unsubscribe;
 }
 
@@ -74,25 +59,9 @@ export type SelectorCache<T> =
   | { isFresh: false; last: null | { value: T } }
   | { isFresh: true; value: T };
 
-export interface SelectorUpdating<T> {
-  areDepsFresh: boolean;
-  isDiscarded?: boolean;
-  valuePromise: Promise<T>;
-}
-
 const initSelectorState = <T>(): SelectorState<T> => {
   return {
     cache: { isFresh: false, last: null },
-    invalidationListeners: [],
-    deletionListeners: [],
-    dependencies: [],
-  };
-};
-
-const initAsyncSelectorState = <T>(): AsyncSelectorState<T> => {
-  return {
-    cache: { isFresh: false, last: null },
-    updating: null,
     invalidationListeners: [],
     deletionListeners: [],
     dependencies: [],
@@ -121,7 +90,6 @@ export class Store<BlockCtx> {
   private readonly blockContext: BlockCtx;
 
   private readonly selectorStates = new Map<Selector<any>, SelectorState<any>>();
-  private readonly asyncSelectorStates = new Map<AsyncSelector<any>, AsyncSelectorState<any>>();
 
   private readonly loaderStates = new Map<Loader<any>, LoaderState<any>>();
 
@@ -227,19 +195,15 @@ export class Store<BlockCtx> {
   };
 
   getAnyValue = <K extends AnyGetKey<any>>(key: K): AnyGetResult<K> => {
-    if (key instanceof AsyncSelector || key instanceof Loader) {
+    if (key instanceof Loader) {
       return this.getAsyncValue(key) as AnyGetResult<K>;
     } else {
       return this.getValue(key);
     }
   };
 
-  getAsyncValue = async <T>(key: AsyncSelector<T> | Loader<T>): Promise<T> => {
-    if (key instanceof Loader) {
-      return this.getLoaderValue(key);
-    } else {
-      return this.getAsyncSelectorValue(key);
-    }
+  getAsyncValue = async <T>(key: Loader<T>): Promise<T> => {
+    return this.getLoaderValue(key);
   };
 
   getLoaderValue = async <T>(loader: Loader<T>): Promise<T> => {
@@ -309,80 +273,11 @@ export class Store<BlockCtx> {
     return value;
   };
 
-  getAsyncSelectorValue = async <T>(selector: AsyncSelector<T>): Promise<T> => {
-    const state = this.getAsyncSelectorState(selector);
-    if (state.cache.isFresh) {
-      return Promise.resolve(state.cache.value);
-    }
-
-    if (state.updating != null) {
-      if (state.updating.areDepsFresh) {
-        // If someone is already computing the same async selector, just wait for it
-        // to avoid duplicate execution.
-        return await state.updating.valuePromise;
-      } else {
-        // But if some dependencies are updated, we should re-compute the value. To do so,
-        // we discard the current computation by replacing the selector state with a new one.
-        state.updating.isDiscarded = true;
-        this.asyncSelectorStates.set(selector, initAsyncSelectorState());
-        return this.getAsyncValue(selector);
-      }
-    }
-
-    state.dependencies.forEach((d) => d.unsubscribe());
-    state.dependencies = [];
-
-    const invalidateCache = () => {
-      if (state.cache.isFresh) {
-        const last = { value: state.cache.value };
-        state.cache = { isFresh: false, last: last };
-        state.invalidationListeners.forEach((f) => f({ last }));
-      }
-      if (state.updating != null) {
-        state.updating.areDepsFresh = false;
-      }
-    };
-
-    const get = <K extends AnyGetKey<any>>(key: K): AnyGetResult<K> => {
-      const unsubscribe = this.onInvalidate(key, invalidateCache);
-      state.dependencies.push({ unsubscribe });
-      return this.getAnyValue(key);
-    };
-
-    const valuePromise = selector.run({ get: get as any });
-    state.updating = { areDepsFresh: true, valuePromise };
-
-    let value: T = await valuePromise;
-    if (state.cache.last != null && selector.isSame(state.cache.last.value, value)) {
-      // If the computed result is same as the last value, use the last value to
-      // keep its referential equality.
-      value = state.cache.last.value;
-    }
-
-    if (state.updating.isDiscarded) {
-      // This state is no longer used so remove the subscriptions.
-      state.dependencies.forEach((d) => d.unsubscribe());
-    }
-    if (state.updating.areDepsFresh) {
-      state.cache = { isFresh: true, value };
+  private getCachableState<T>(key: CachableKey<T>): CachableState<T> {
+    if (key instanceof Loader) {
+      return this.getLoaderState(key);
     } else {
-      // When some dependencies are updated during the computation,
-      // we mark the cache as non-fresh to run the computation again on the next call.
-      // Note that the current computation returns a stale value either way.
-      state.cache = { isFresh: false, last: { value } };
-    }
-
-    state.updating = null;
-    return value;
-  };
-
-  private getCachableState<T>(selector: CachableKey<T>): CachableState<T> {
-    if (selector instanceof AsyncSelector) {
-      return this.getAsyncSelectorState(selector);
-    } else if (selector instanceof Loader) {
-      return this.getLoaderState(selector);
-    } else {
-      return this.getSelectorState(selector);
+      return this.getSelectorState(key);
     }
   }
 
@@ -397,21 +292,6 @@ export class Store<BlockCtx> {
         state.deletionListeners.push(selector.onDelete);
       }
       this.selectorStates.set(selector, state);
-    }
-    return state;
-  }
-
-  private getAsyncSelectorState<T>(selector: AsyncSelector<T>): AsyncSelectorState<T> {
-    let state = this.asyncSelectorStates.get(selector);
-    if (state == null) {
-      state = initAsyncSelectorState();
-      if (selector.onCacheInvalidate != null) {
-        state.invalidationListeners.push(selector.onCacheInvalidate);
-      }
-      if (selector.onDelete != null) {
-        state.deletionListeners.push(selector.onDelete);
-      }
-      this.asyncSelectorStates.set(selector, state);
     }
     return state;
   }
@@ -475,10 +355,10 @@ export class Store<BlockCtx> {
   };
 
   onSelectorCacheInvalidate = <T>(
-    selector: AnySelector<T>,
+    selector: Selector<T>,
     listener: EventListener<SelectorCacheInvalidateEvent<T>>,
   ): Unsubscribe => {
-    const state = this.getCachableState(selector);
+    const state = this.getSelectorState(selector);
     state.invalidationListeners.push(listener);
     return function unsubscribe() {
       state.invalidationListeners = state.invalidationListeners.filter((f) => f !== listener);
@@ -497,10 +377,10 @@ export class Store<BlockCtx> {
   };
 
   onSelectorDelete = <T>(
-    selector: AnySelector<T>,
+    selector: Selector<T>,
     listener: (event: SelectorDeletionEvent<T>) => void,
   ): Unsubscribe => {
-    const state = this.getCachableState(selector);
+    const state = this.getSelectorState(selector);
     state.deletionListeners.push(listener);
     return function unsubscribe() {
       state.deletionListeners = state.deletionListeners.filter((f) => f !== listener);
@@ -554,8 +434,6 @@ export class Store<BlockCtx> {
       return this.deleteBlock(key);
     } else if (key instanceof Selector) {
       return this.deleteSelector(key);
-    } else if (key instanceof AsyncSelector) {
-      return this.deleteAsyncSelector(key);
     } else {
       return this.deleteLoader(key);
     }
@@ -583,22 +461,6 @@ export class Store<BlockCtx> {
       throw new ActiveValueDeletionError("selector", state.invalidationListeners.length);
     }
     this.selectorStates.delete(selector);
-    state.dependencies.forEach((d) => d.unsubscribe());
-    const { cache } = state;
-    const last = cache.isFresh ? { value: cache.value } : cache.last;
-    state.deletionListeners.forEach((f) => f({ last }));
-    return true;
-  };
-
-  private deleteAsyncSelector = (selector: AsyncSelector<any>): boolean => {
-    const state = this.asyncSelectorStates.get(selector);
-    if (state == null) {
-      return false;
-    }
-    if (0 < state.invalidationListeners.length) {
-      throw new ActiveValueDeletionError("selector", state.invalidationListeners.length);
-    }
-    this.asyncSelectorStates.delete(selector);
     state.dependencies.forEach((d) => d.unsubscribe());
     const { cache } = state;
     const last = cache.isFresh ? { value: cache.value } : cache.last;

@@ -1,9 +1,9 @@
 import { Block, Comparer } from "./block";
-import { AsyncSelector, Selector } from "./selector";
+import { Selector } from "./selector";
 
 export type AnyGet = <K extends AnyGetKey<any>>(key: K) => AnyGetResult<K>;
 
-export type AnyGetKey<T> = Block<T> | Selector<T> | AsyncSelector<T> | Loader<T>;
+export type AnyGetKey<T> = Block<T> | Selector<T> | Loader<T>;
 
 export type AnyGetResult<K extends AnyGetKey<any>> = K extends Loader<infer T>
   ? Promise<T>
