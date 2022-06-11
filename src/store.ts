@@ -22,12 +22,16 @@ export interface BlockState<T> {
 }
 
 export interface CachableState<T> {
-  cache: SelectorCache<T>;
-  invalidationListeners: EventListener<SelectorCacheInvalidateEvent<T>>[];
-  deletionListeners: EventListener<SelectorDeletionEvent<T>>[];
+  cache: ValueCache<T>;
 }
 
+export type ValueCache<T> =
+  | { isFresh: false; last: null | { value: T } }
+  | { isFresh: true; value: T };
+
 export interface SelectorState<T> extends CachableState<T> {
+  invalidationListeners: EventListener<SelectorCacheInvalidateEvent<T>>[];
+  deletionListeners: EventListener<SelectorDeletionEvent<T>>[];
   dependencies: SelectorDependency<any>[];
 }
 
@@ -37,8 +41,7 @@ export interface SelectorDependency<T> {
   readonly unsubscribe: Unsubscribe;
 }
 
-export interface LoaderState<T> {
-  cache: LoaderCache<T>;
+export interface LoaderState<T> extends CachableState<T> {
   updating: LoaderUpdating<T> | null;
   invalidationListeners: EventListener<LoaderCacheInvalidateEvent<T>>[];
   deletionListeners: EventListener<LoaderDeletionEvent<T>>[];
@@ -49,19 +52,11 @@ export interface LoaderDependency {
   readonly unsubscribe: Unsubscribe;
 }
 
-export type LoaderCache<T> =
-  | { isFresh: false; last: null | { value: T } }
-  | { isFresh: true; value: T };
-
 export interface LoaderUpdating<T> {
   areDepsFresh: boolean;
   isDiscarded?: boolean;
   valuePromise: Promise<T>;
 }
-
-export type SelectorCache<T> =
-  | { isFresh: false; last: null | { value: T } }
-  | { isFresh: true; value: T };
 
 const initSelectorState = <T>(): SelectorState<T> => {
   return {
