@@ -9,6 +9,10 @@ export type Unsubscribe = () => void;
 
 export type EventListener<E> = (event: E) => void;
 
+export interface ValueInvalidationEvent<T> {
+  readonly last: null | { value: T };
+}
+
 export type CachableKey<T> = Selector<T> | Loader<T>;
 
 export interface BlockState<T> {
@@ -316,15 +320,14 @@ export class Store<BlockCtx> {
     return state.cache.isFresh && state.cache.value === value;
   };
 
-  // XXX: not type safe
   onInvalidate = <T>(
     key: AnyGetKey<T>,
-    listener: EventListener<
-      BlockChangeEvent<T> | SelectorCacheInvalidateEvent<T> | LoaderCacheInvalidateEvent<T>
-    >,
+    listener: EventListener<ValueInvalidationEvent<T>>,
   ): Unsubscribe => {
     if (key instanceof Block) {
-      return this.onBlockChange(key, listener);
+      return this.onBlockChange(key, (event) => {
+        listener({ last: { value: event.lastValue } });
+      });
     } else if (key instanceof Loader) {
       return this.onLoaderCacheInvalidate(key, listener);
     } else {
