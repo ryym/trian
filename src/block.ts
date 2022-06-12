@@ -10,6 +10,7 @@ export interface BlockDeletionEvent<T> {
 }
 
 export interface BlockConfig<T, Ctx> {
+  readonly name?: string;
   readonly default: (ctx?: Ctx) => T;
   readonly isSame?: Comparer<T>;
   readonly onUpdate?: (event: BlockChangeEvent<T>) => void;
@@ -17,12 +18,14 @@ export interface BlockConfig<T, Ctx> {
 }
 
 export class Block<T, Ctx = any> {
+  readonly name?: string;
   readonly default: (ctx?: Ctx) => T;
   readonly isSame: Comparer<T>;
   readonly onUpdate?: (event: BlockChangeEvent<T>) => void;
   readonly onDelete?: (event: BlockDeletionEvent<T>) => void;
 
   constructor(config: BlockConfig<T, Ctx>) {
+    this.name = config.name;
     this.default = config.default;
     this.isSame = config.isSame || Object.is;
     this.onUpdate = config.onUpdate;
