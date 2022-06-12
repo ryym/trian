@@ -109,38 +109,47 @@ describe("Loader and Store", () => {
     });
 
     describe("when any of dependencies changed during computation", () => {
-      it("returns stale value and do not store cache", async () => {
+      it("re-computes value and returns the newer result", async () => {
         const pauser = new Pauser();
         const numValue = block({ default: () => 4 });
         const squareValue = loader({
           fetch: async ({ get }) => {
             const n = get(numValue);
-            await pauser.pause();
+            if (n === 4) {
+              await pauser.pause();
+            }
             return n * n;
           },
         });
         const store = createStore();
 
-        // A first call.
-        // The numValue changes during the computation so it does not store a cache.
+        // It resolves to the value 9*9 even if the block is changed after
+        // the loader computation starts.
         const squarePromise1 = store.getAsyncValue(squareValue);
         store.setValue(numValue, 9);
         pauser.resume();
-        expect(await squarePromise1).toEqual(16);
-        expect(store.getCacheValue(squareValue)).toBeNull();
+        expect(await squarePromise1).toEqual(81);
+      });
 
-        // A second call.
-        // It runs the computation again and stores a cache.
-        const squarePromise2 = store.getAsyncValue(squareValue);
-        pauser.resume();
-        expect(await squarePromise2).toEqual(81);
-        expect(store.getCacheValue(squareValue)).toEqual({ value: 81 });
+      it("discards first computation immediately on revalidation", async () => {
+        const pauser = new Pauser();
+        const numValue = block({ default: () => 4 });
+        const squareValue = loader({
+          fetch: async ({ get }) => {
+            const n = get(numValue);
+            if (n === 4) {
+              await pauser.pause();
+            }
+            return n * n;
+          },
+        });
+        const store = createStore();
 
-        // A third call.
-        // It does not run the computation because the cache exists.
-        const squarePromise3 = store.getAsyncValue(squareValue);
-        expect(pauser.isPaused()).toBe(false);
-        expect(await squarePromise3).toEqual(81);
+        // The first call that depends on numValue:4 never finishes
+        // since we does not resume the pauser. But the promise resolves with no problem.
+        const squarePromise1 = store.getAsyncValue(squareValue);
+        store.setValue(numValue, 9);
+        expect(await squarePromise1).toEqual(81);
       });
     });
 
@@ -172,45 +181,35 @@ describe("Loader and Store", () => {
       });
 
       describe("when any of dependencies has changed", () => {
-        it("discards first computation even if it finishes after second", async () => {
-          const pausers = [new Pauser(), new Pauser()];
+        it("discards first computation and all calls get newer result", async () => {
+          const pauser = new Pauser();
           const numValue = block({ default: () => 4 });
-          let callIdx = 0;
+          let nCalled = 0;
           const squareValue = loader({
             fetch: async ({ get }) => {
-              const pauser = pausers[callIdx++];
-              if (pauser == null) {
-                throw new Error(`unexpected call: ${callIdx}`);
-              }
+              nCalled += 1;
               const n = get(numValue);
-              await pauser.pause();
+              if (n === 4) {
+                await pauser.pause();
+              }
               return n * n;
             },
           });
           const store = createStore();
 
-          // 1. Start the first (0) computation.
-          const squarePromise0 = store.getAsyncValue(squareValue);
-
-          // 2. Invalidate the first call.
+          const promises: Promise<unknown>[] = [];
+          promises.push(store.getAsyncValue(squareValue));
+          promises.push(store.getAsyncValue(squareValue));
           store.setValue(numValue, 9);
+          pauser.resume();
+          promises.push(store.getAsyncValue(squareValue));
+          promises.push(store.getAsyncValue(squareValue));
 
-          // 3. Start the second (1) computation.
-          const squarePromise1 = store.getAsyncValue(squareValue);
-
-          // 4. Finish the second computation.
-          pausers[1].resume();
-
-          // It results to a fresh value and stores a cache.
-          expect(await squarePromise1).toEqual(81);
-          expect(store.getCacheValue(squareValue)).toEqual({ value: 81 });
-
-          // 5. Finish the first computation.
-          pausers[0].resume();
-
-          // It result to a stale value but do not update the cache.
-          expect(await squarePromise0).toEqual(16);
-          expect(store.getCacheValue(squareValue)).toEqual({ value: 81 });
+          const values = await Promise.all(promises);
+          expect({ values, nCalled }).toEqual({
+            values: [81, 81, 81, 81],
+            nCalled: 2,
+          });
         });
       });
     });

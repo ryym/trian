@@ -2,6 +2,7 @@ import { Block, BlockDeletionEvent, BlockChangeEvent } from "./block";
 import { Loader, LoaderCacheInvalidateEvent, LoaderDeletionEvent } from "./loader";
 import { Selector, SelectorCacheInvalidateEvent, SelectorDeletionEvent } from "./selector";
 import { AnyGetKey, AnyGetResult } from "./loader";
+import { RevalidatableResolver } from "./RevalidatableResolver";
 
 export type UpdateValue<T> = (value: T) => T;
 
@@ -48,7 +49,7 @@ export interface SelectorDependency<T> {
 }
 
 export interface LoaderState<T> extends CachableState<T> {
-  updating: LoaderUpdating<T> | null;
+  currentUpdate: RevalidatableResolver<T> | null;
   invalidationListeners: EventListener<LoaderCacheInvalidateEvent<T>>[];
   deletionListeners: EventListener<LoaderDeletionEvent<T>>[];
   dependencies: LoaderDependency[];
@@ -56,12 +57,6 @@ export interface LoaderState<T> extends CachableState<T> {
 
 export interface LoaderDependency {
   readonly unsubscribe: Unsubscribe;
-}
-
-export interface LoaderUpdating<T> {
-  areDepsFresh: boolean;
-  isDiscarded?: boolean;
-  valuePromise: Promise<T>;
 }
 
 const initSelectorState = <T>(): SelectorState<T> => {
@@ -76,7 +71,7 @@ const initSelectorState = <T>(): SelectorState<T> => {
 const initLoaderState = <T>(): LoaderState<T> => {
   return {
     cache: { state: "Stale", last: null },
-    updating: null,
+    currentUpdate: null,
     invalidationListeners: [],
     deletionListeners: [],
     dependencies: [],
@@ -217,18 +212,9 @@ export class Store<BlockCtx> {
       return Promise.resolve(state.cache.value);
     }
 
-    if (state.updating != null) {
-      if (state.updating.areDepsFresh) {
-        // If someone is already computing the same async selector, just wait for it
-        // to avoid duplicate execution.
-        return await state.updating.valuePromise;
-      } else {
-        // But if some dependencies are updated, we should re-compute the value. To do so,
-        // we discard the current computation by replacing the selector state with a new one.
-        state.updating.isDiscarded = true;
-        this.loaderStates.set(loader, initLoaderState());
-        return this.getAsyncValue(loader);
-      }
+    if (state.currentUpdate != null) {
+      // If someone is already computing the same loader, just wait for it.
+      return state.currentUpdate.resolveWithAutoRevalidation();
     }
 
     state.dependencies.forEach((d) => d.unsubscribe());
@@ -240,8 +226,8 @@ export class Store<BlockCtx> {
         state.cache = { state: "Stale", last: last };
         state.invalidationListeners.forEach((f) => f({ last }));
       }
-      if (state.updating != null) {
-        state.updating.areDepsFresh = false;
+      if (state.currentUpdate != null) {
+        state.currentUpdate.requestToRevalidate();
       }
     };
 
@@ -251,30 +237,29 @@ export class Store<BlockCtx> {
       return this.getAnyValue(key);
     };
 
-    const valuePromise = loader.run({ get, set: this.setValue }, this.blockContext);
-    state.updating = { areDepsFresh: true, valuePromise };
+    // Store the current update so that concurrent loader calls can share and await a single promise.
+    state.currentUpdate = new RevalidatableResolver({
+      get: () => {
+        return loader.run({ get, set: this.setValue }, this.blockContext);
+      },
+      revalidate: () => {
+        this.loaderStates.set(loader, { ...state, currentUpdate: null });
+        return this.getLoaderValue(loader);
+      },
+    });
 
-    let value: T = await valuePromise;
+    // Run the loader computation. If any dependencies are updated during the computation,
+    // discard it and run the new computation.
+    let value: T = await state.currentUpdate.resolveWithAutoRevalidation();
+    state.currentUpdate = null;
+
     if (state.cache.last != null && loader.isSame(state.cache.last.value, value)) {
       // If the computed result is same as the last value, use the last value to
       // keep its referential equality.
       value = state.cache.last.value;
     }
 
-    if (state.updating.isDiscarded) {
-      // This state is no longer used so remove the subscriptions.
-      state.dependencies.forEach((d) => d.unsubscribe());
-    }
-    if (state.updating.areDepsFresh) {
-      state.cache = { state: "Fresh", value };
-    } else {
-      // When some dependencies are updated during the computation,
-      // we mark the cache as non-fresh to run the computation again on the next call.
-      // Note that the current computation returns a stale value either way.
-      state.cache = { state: "Stale", last: { value } };
-    }
-
-    state.updating = null;
+    state.cache = { state: "Fresh", value };
     return value;
   };
 
