@@ -13,7 +13,7 @@ export type AnyGetResult<K extends AnyGetKey<any>> = K extends Loader<infer T>
 
 export interface LoaderConfig<T, Ctx> {
   readonly name?: string;
-  readonly fetch: LoaderFn<T, Ctx>;
+  readonly get: LoaderFn<T, Ctx>;
   readonly isSame?: Comparer<T>;
   readonly onCacheInvalidate?: (event: LoaderCacheInvalidateEvent<T>) => void;
   readonly onDelete?: (event: LoaderDeletionEvent<T>) => void;
@@ -36,21 +36,21 @@ export interface LoaderFnParams {
 
 export class Loader<T, Ctx = any> {
   readonly name?: string;
-  private readonly fetch: LoaderFn<T, Ctx>;
+  private readonly get: LoaderFn<T, Ctx>;
   readonly isSame: Comparer<T>;
   readonly onCacheInvalidate?: (event: LoaderCacheInvalidateEvent<T>) => void;
   readonly onDelete?: (event: LoaderDeletionEvent<T>) => void;
 
   constructor(config: LoaderConfig<T, Ctx>) {
     this.name = config.name;
-    this.fetch = config.fetch;
+    this.get = config.get;
     this.isSame = config.isSame || Object.is;
     this.onCacheInvalidate = config.onCacheInvalidate;
     this.onDelete = config.onDelete;
   }
 
   run(params: LoaderFnParams, ctx: Ctx): Promise<T> {
-    return this.fetch(params, ctx);
+    return this.get(params, ctx);
   }
 }
 

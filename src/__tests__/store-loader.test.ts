@@ -20,7 +20,7 @@ describe("Loader and Store", () => {
       default: () => ({}),
     });
     const itemsLoader = loader({
-      fetch: async (p) => {
+      get: async (p) => {
         const items = await fetchItems();
         const itemMap = items.reduce((map, item) => {
           map[item.id] = item;
@@ -48,7 +48,7 @@ describe("Loader and Store", () => {
     it("computes and caches loader value", async () => {
       let nCalled = 0;
       const fn = jest.fn().mockImplementation(async () => ++nCalled);
-      const numValue = loader<number>({ fetch: fn });
+      const numValue = loader<number>({ get: fn });
       const store = createStore();
 
       const values = [
@@ -66,7 +66,7 @@ describe("Loader and Store", () => {
         const numValue = block({ default: () => 2 });
         let nCalled = 0;
         const squareValue = loader({
-          fetch: async ({ get }) => {
+          get: async ({ get }) => {
             nCalled += 1;
             return get(numValue) * get(numValue);
           },
@@ -86,11 +86,11 @@ describe("Loader and Store", () => {
       it("re-computes value (indirect dependency changes)", async () => {
         const numValue = block({ default: () => 2 });
         const squareValue = loader({
-          fetch: async ({ get }) => get(numValue) * get(numValue),
+          get: async ({ get }) => get(numValue) * get(numValue),
         });
         let nCalled = 0;
         const minusValue = loader({
-          fetch: async ({ get }) => {
+          get: async ({ get }) => {
             nCalled += 1;
             const sq = await get(squareValue);
             return sq * -1;
@@ -112,7 +112,7 @@ describe("Loader and Store", () => {
         const nums = block({ default: () => [3, 4, 5] });
         const doubleNum = selector({ get: ({ get }) => get(nums)[0] * 2 });
         const minusNum = loader({
-          fetch: async ({ get }) => [get(doubleNum) * -1],
+          get: async ({ get }) => [get(doubleNum) * -1],
         });
 
         const store = createStore();
@@ -127,9 +127,9 @@ describe("Loader and Store", () => {
       it("skip re-computation if possible (selector dependency via loader)", async () => {
         const nums = block({ default: () => [3, 4, 5] });
         const firstNum = selector({ get: ({ get }) => get(nums)[0] });
-        const doubleNum = loader({ fetch: async ({ get }) => get(firstNum) * 2 });
+        const doubleNum = loader({ get: async ({ get }) => get(firstNum) * 2 });
         const minusNum = loader({
-          fetch: async ({ get }) => [(await get(doubleNum)) * -1],
+          get: async ({ get }) => [(await get(doubleNum)) * -1],
         });
 
         const store = createStore();
@@ -147,7 +147,7 @@ describe("Loader and Store", () => {
         const pauser = new Pauser();
         const numValue = block({ default: () => 4 });
         const squareValue = loader({
-          fetch: async ({ get }) => {
+          get: async ({ get }) => {
             const n = get(numValue);
             if (n === 4) {
               await pauser.pause();
@@ -169,7 +169,7 @@ describe("Loader and Store", () => {
         const pauser = new Pauser();
         const numValue = block({ default: () => 4 });
         const squareValue = loader({
-          fetch: async ({ get }) => {
+          get: async ({ get }) => {
             const n = get(numValue);
             if (n === 4) {
               await pauser.pause();
@@ -194,7 +194,7 @@ describe("Loader and Store", () => {
           const numValue = block({ default: () => 4 });
           let nCalled = 0;
           const squareValue = loader({
-            fetch: async ({ get }) => {
+            get: async ({ get }) => {
               nCalled += 1;
               const n = get(numValue);
               await pauser.pause();
@@ -220,7 +220,7 @@ describe("Loader and Store", () => {
           const numValue = block({ default: () => 4 });
           let nCalled = 0;
           const squareValue = loader({
-            fetch: async ({ get }) => {
+            get: async ({ get }) => {
               nCalled += 1;
               const n = get(numValue);
               if (n === 4) {
