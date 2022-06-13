@@ -324,11 +324,6 @@ export class Store<BlockCtx> {
     return state.cache.state;
   }
 
-  isFreshCache = <T>(key: CachableKey<T>, value: T): boolean => {
-    const state = this.getCachableState(key);
-    return state.cache.state === "Fresh" && state.cache.value === value;
-  };
-
   onInvalidate = <T>(
     key: AnyGetKey<T>,
     listener: EventListener<ValueInvalidationEvent<T>>,
