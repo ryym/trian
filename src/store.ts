@@ -198,7 +198,7 @@ export class Store<BlockCtx> {
     return this.getLoaderValue(key);
   };
 
-  getLoaderValue = async <T>(loader: Loader<T>): Promise<T> => {
+  private getLoaderValue = async <T>(loader: Loader<T>): Promise<T> => {
     const state = this.getLoaderState(loader);
 
     if (state.currentUpdate != null) {
