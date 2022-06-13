@@ -1,6 +1,6 @@
 import * as React from "react";
 import { render } from "react-dom";
-import { createStore, createDispatch, block, selector, Thunk } from "../..";
+import { createStore, createDispatch, block, selector, loader, Thunk } from "../..";
 import { TrianProvider, useValue, useAsyncValue, useDispatch } from "../../react";
 
 const { useEffect, useState } = React;
@@ -121,7 +121,7 @@ const store = createStore({
 
 const customDispatch = createDispatch(store, "sample-context");
 
-const AsyncCount = selector.async({
+const AsyncCount = loader({
   get: ({ get }) =>
     new Promise<number>((resolve) => {
       setTimeout(() => {

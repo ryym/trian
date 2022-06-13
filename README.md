@@ -102,7 +102,5 @@ setTimeout(() => {
 ```
 
 - `useValue`, `useAsyncValue`
-- `useBlock`
-- `useSelector`, `useAsyncSelector`
 - `useAction`
 - `useDispatch`
