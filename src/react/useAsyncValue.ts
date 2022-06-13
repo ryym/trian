@@ -33,6 +33,9 @@ export const useAsyncValue = <T>(passedLoader: Loader<T>): AsyncResult<T> => {
 
   useEffect(() => {
     const unsubscribe = store.onInvalidate(loader, () => {
+      if (!store._willRecomputeOnGet(loader)) {
+        return;
+      }
       setResult((result) => {
         const lastValue = result.status === "Done" ? result.value : undefined;
         return { status: "Loading", loading: true, value: lastValue };

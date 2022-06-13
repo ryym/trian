@@ -198,6 +198,11 @@ export class Store<BlockCtx> {
     return this.getLoaderValue(key);
   };
 
+  _willRecomputeOnGet = <T>(loader: Loader<T>): boolean => {
+    const state = this.getLoaderState(loader);
+    return state.currentUpdate != null || this.precomputeCacheValidity(state) !== "Fresh";
+  };
+
   private getLoaderValue = async <T>(loader: Loader<T>): Promise<T> => {
     const state = this.getLoaderState(loader);
 
