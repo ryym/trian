@@ -6,18 +6,20 @@ export type AsyncResult<T> =
   | {
       status: "Loading";
       loading: true;
-      value?: T;
+      value: T | undefined;
+      error?: undefined;
     }
   | {
       status: "Done";
-      value: T;
       loading: false;
+      value: T;
+      error?: undefined;
     }
   | {
       status: "Error";
-      error: any;
-      value: undefined;
       loading: false;
+      value: undefined;
+      error: unknown;
     };
 
 export const useAsyncValue = <T>(passedLoader: Loader<T>): AsyncResult<T> => {
@@ -28,7 +30,7 @@ export const useAsyncValue = <T>(passedLoader: Loader<T>): AsyncResult<T> => {
     const cache = store.getCacheValue(loader);
     return cache != null
       ? { status: "Done", value: cache.value, loading: false }
-      : { status: "Loading", loading: true };
+      : { status: "Loading", value: undefined, loading: true };
   });
 
   useEffect(() => {
