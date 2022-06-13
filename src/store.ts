@@ -24,6 +24,7 @@ export interface BlockState<T> {
 
 export interface CachableState<T> {
   cache: ValueCache<T>;
+  dependencies: CacheDependency<any>[];
 }
 
 export type ValueCache<T> =
@@ -32,31 +33,39 @@ export type ValueCache<T> =
       readonly last: null | { value: T };
     }
   | {
+      readonly state: "MaybeStale";
+      readonly last: { value: T };
+    }
+  | {
       readonly state: "Fresh";
       readonly value: T;
     };
 
-export interface SelectorState<T> extends CachableState<T> {
-  invalidationListeners: EventListener<SelectorCacheInvalidateEvent<T>>[];
-  deletionListeners: EventListener<SelectorDeletionEvent<T>>[];
-  dependencies: SelectorDependency<any>[];
-}
+export type CacheValidity = ValueCache<unknown>["state"];
 
-export interface SelectorDependency<T> {
+export type CacheDependency<T> = SyncCacheDependency<T> | AsyncCacheDependency<T>;
+
+export interface SyncCacheDependency<T> {
   readonly key: Block<T> | Selector<T>;
   readonly lastValue: T;
   readonly unsubscribe: Unsubscribe;
+}
+
+export interface AsyncCacheDependency<T> {
+  readonly key: Loader<T>;
+  readonly unsubscribe: Unsubscribe;
+}
+
+export interface SelectorState<T> extends CachableState<T> {
+  invalidationListeners: EventListener<SelectorCacheInvalidateEvent<T>>[];
+  deletionListeners: EventListener<SelectorDeletionEvent<T>>[];
+  dependencies: SyncCacheDependency<any>[];
 }
 
 export interface LoaderState<T> extends CachableState<T> {
   currentUpdate: RevalidatableResolver<T> | null;
   invalidationListeners: EventListener<LoaderCacheInvalidateEvent<T>>[];
   deletionListeners: EventListener<LoaderDeletionEvent<T>>[];
-  dependencies: LoaderDependency[];
-}
-
-export interface LoaderDependency {
-  readonly unsubscribe: Unsubscribe;
 }
 
 const initSelectorState = <T>(): SelectorState<T> => {
@@ -143,26 +152,9 @@ export class Store<BlockCtx> {
 
   private getSelectorValue = <T>(selector: Selector<T>): T => {
     const state = this.getSelectorState(selector);
+    this.precomputeCacheValidity(state);
     if (state.cache.state === "Fresh") {
       return state.cache.value;
-    }
-
-    // If the cache exists and any dependencies does not change,
-    // treat the current cache as a fresh value.
-    if (state.cache.last != null) {
-      let areDepsSame = true;
-      for (const dep of state.dependencies) {
-        const value = this.getValue(dep.key);
-        if (value !== dep.lastValue) {
-          areDepsSame = false;
-          break;
-        }
-      }
-      if (areDepsSame) {
-        const value = state.cache.last.value;
-        state.cache = { state: "Fresh", value };
-        return value;
-      }
     }
 
     state.dependencies.forEach((d) => d.unsubscribe());
@@ -171,7 +163,7 @@ export class Store<BlockCtx> {
     const invalidateCache = () => {
       if (state.cache.state === "Fresh") {
         const last = { value: state.cache.value };
-        state.cache = { state: "Stale", last };
+        state.cache = { state: "MaybeStale", last };
         state.invalidationListeners.forEach((f) => f({ last }));
       }
     };
@@ -208,13 +200,15 @@ export class Store<BlockCtx> {
 
   getLoaderValue = async <T>(loader: Loader<T>): Promise<T> => {
     const state = this.getLoaderState(loader);
-    if (state.cache.state === "Fresh") {
-      return Promise.resolve(state.cache.value);
-    }
 
     if (state.currentUpdate != null) {
       // If someone is already computing the same loader, just wait for it.
       return state.currentUpdate.resolveWithAutoRevalidation();
+    }
+
+    this.precomputeCacheValidity(state);
+    if (state.cache.state === "Fresh") {
+      return state.cache.value;
     }
 
     state.dependencies.forEach((d) => d.unsubscribe());
@@ -223,7 +217,7 @@ export class Store<BlockCtx> {
     const invalidateCache = () => {
       if (state.cache.state === "Fresh") {
         const last = { value: state.cache.value };
-        state.cache = { state: "Stale", last: last };
+        state.cache = { state: "MaybeStale", last: last };
         state.invalidationListeners.forEach((f) => f({ last }));
       }
       if (state.currentUpdate != null) {
@@ -233,8 +227,14 @@ export class Store<BlockCtx> {
 
     const get = <K extends AnyGetKey<any>>(key: K): AnyGetResult<K> => {
       const unsubscribe = this.onInvalidate(key, invalidateCache);
-      state.dependencies.push({ unsubscribe });
-      return this.getAnyValue(key);
+      if (key instanceof Loader) {
+        state.dependencies.push({ key, unsubscribe });
+        return this.getAnyValue(key);
+      } else {
+        const value = this.getValue(key);
+        state.dependencies.push({ key, unsubscribe, lastValue: value });
+        return value;
+      }
     };
 
     // Store the current update so that concurrent loader calls can share and await a single promise.
@@ -299,6 +299,29 @@ export class Store<BlockCtx> {
       this.loaderStates.set(loader, state);
     }
     return state;
+  }
+
+  private precomputeCacheValidity<T>(state: CachableState<T>): CacheValidity {
+    // When the cache is marked as MaybeStale, check if any of its dependencies have been actually changed.
+    // If so, the cache is Stale. Otherwise we can keep using the current cache so mark it as Fresh.
+    if (state.cache.state === "MaybeStale" && state.cache.last != null) {
+      const allFresh = state.dependencies.every((d) => {
+        if (d.key instanceof Loader) {
+          // If the dependency is a loader, avoid running value computation here.
+          // Instead check its dependencies recursively.
+          const st = this.getLoaderState(d.key);
+          return this.precomputeCacheValidity(st) === "Fresh";
+        } else {
+          return this.getValue(d.key) === (d as SyncCacheDependency<unknown>).lastValue;
+        }
+      });
+      if (allFresh) {
+        state.cache = { state: "Fresh", value: state.cache.last.value };
+      } else {
+        state.cache = { state: "Stale", last: state.cache.last };
+      }
+    }
+    return state.cache.state;
   }
 
   isFreshCache = <T>(key: CachableKey<T>, value: T): boolean => {

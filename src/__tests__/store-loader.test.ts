@@ -1,5 +1,6 @@
 import { block } from "../block";
 import { loader } from "../loader";
+import { selector } from "../selector";
 import { selectorFamily } from "../selectorFamily";
 import { createStore } from "../store";
 import { Pauser } from "./lib/pauser";
@@ -105,6 +106,39 @@ describe("Loader and Store", () => {
         values.push(await store.getAsyncValue(minusValue));
 
         expect({ values, nCalled }).toEqual({ values: [-4, -4, -81, -81], nCalled: 2 });
+      });
+
+      it("skip re-computation if possible (selector dependency)", async () => {
+        const nums = block({ default: () => [3, 4, 5] });
+        const doubleNum = selector({ get: ({ get }) => get(nums)[0] * 2 });
+        const minusNum = loader({
+          fetch: async ({ get }) => [get(doubleNum) * -1],
+        });
+
+        const store = createStore();
+        const values: number[][] = [];
+        values.push(await store.getAsyncValue(minusNum));
+        store.setValue(nums, [3, 7, 8]); // firstNum stays same.
+        values.push(await store.getAsyncValue(minusNum));
+        expect(values).toEqual([[-6], [-6]]);
+        expect(values[0]).toBe(values[1]); // the final value keeps referencial equality.
+      });
+
+      it("skip re-computation if possible (selector dependency via loader)", async () => {
+        const nums = block({ default: () => [3, 4, 5] });
+        const firstNum = selector({ get: ({ get }) => get(nums)[0] });
+        const doubleNum = loader({ fetch: async ({ get }) => get(firstNum) * 2 });
+        const minusNum = loader({
+          fetch: async ({ get }) => [(await get(doubleNum)) * -1],
+        });
+
+        const store = createStore();
+        const values: number[][] = [];
+        values.push(await store.getAsyncValue(minusNum));
+        store.setValue(nums, [3, 7, 8]); // firstNum stays same.
+        values.push(await store.getAsyncValue(minusNum));
+        expect(values).toEqual([[-6], [-6]]);
+        expect(values[0]).toBe(values[1]); // the final value keeps referencial equality.
       });
     });
 
