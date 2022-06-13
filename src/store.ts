@@ -77,9 +77,12 @@ const initSelectorState = <T>(): SelectorState<T> => {
   };
 };
 
-const initLoaderState = <T>(): LoaderState<T> => {
+const initLoaderState = <T>(initialValue: null | (() => T)): LoaderState<T> => {
   return {
-    cache: { state: "Stale", last: null },
+    cache: {
+      state: "Stale",
+      last: initialValue == null ? null : { value: initialValue() },
+    },
     currentUpdate: null,
     invalidationListeners: [],
     deletionListeners: [],
@@ -292,18 +295,28 @@ export class Store<BlockCtx> {
   }
 
   private getLoaderState<T>(loader: Loader<T>): LoaderState<T> {
-    let state = this.loaderStates.get(loader);
-    if (state == null) {
-      state = initLoaderState();
-      if (loader.onCacheInvalidate != null) {
-        state.invalidationListeners.push(loader.onCacheInvalidate);
-      }
-      if (loader.onDelete != null) {
-        state.deletionListeners.push(loader.onDelete);
-      }
-      this.loaderStates.set(loader, state);
-    }
+    const [state] = this.getOrInitLoaderState(loader, null);
     return state;
+  }
+
+  private getOrInitLoaderState<T>(
+    loader: Loader<T>,
+    initialValue: null | (() => T),
+  ): [state: LoaderState<T>, initialized: boolean] {
+    let state = this.loaderStates.get(loader);
+    if (state != null) {
+      return [state, false];
+    }
+
+    state = initLoaderState(initialValue);
+    if (loader.onCacheInvalidate != null) {
+      state.invalidationListeners.push(loader.onCacheInvalidate);
+    }
+    if (loader.onDelete != null) {
+      state.deletionListeners.push(loader.onDelete);
+    }
+    this.loaderStates.set(loader, state);
+    return [state, true];
   }
 
   private precomputeCacheValidity<T>(state: CachableState<T>): CacheValidity {
@@ -434,12 +447,14 @@ export class Store<BlockCtx> {
     state.changeListeners.forEach((f) => f({ lastValue, value }));
   };
 
-  trySetInitialValue = <T>(
-    block: Block<T>,
-    initialValue: () => T,
-  ): [value: T, initialized: boolean] => {
-    const [state, initialized] = this.getOrInitBlockState(block, initialValue);
-    return [state.current, initialized];
+  trySetInitialValue = <T>(key: Block<T> | Loader<T>, initialValue: () => T): boolean => {
+    if (key instanceof Block) {
+      const [, initialized] = this.getOrInitBlockState(key, initialValue);
+      return initialized;
+    } else {
+      const [, initialized] = this.getOrInitLoaderState(key, initialValue);
+      return initialized;
+    }
   };
 
   delete = (key: AnyGetKey<any>): boolean => {
