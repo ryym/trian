@@ -135,17 +135,13 @@ export class Store<BlockCtx> {
   };
 
   private getBlockState<T>(block: Block<T>): BlockState<T> {
-    const [state] = this.getOrInitBlockState(block, null);
-    return state;
+    return this.getOrInitBlockState(block, null);
   }
 
-  private getOrInitBlockState<T>(
-    block: Block<T>,
-    initialValue: null | (() => T),
-  ): [state: BlockState<T>, initialized: boolean] {
+  private getOrInitBlockState<T>(block: Block<T>, initialValue: null | (() => T)): BlockState<T> {
     let state = this.blockStates.get(block);
     if (state != null) {
-      return [state, false];
+      return state;
     }
 
     const value = initialValue == null ? block.default(this.blockContext) : initialValue();
@@ -161,7 +157,7 @@ export class Store<BlockCtx> {
       state.deletionListeners.push(block.onDelete);
     }
     this.blockStates.set(block, state);
-    return [state, true];
+    return state;
   }
 
   private getSelectorValue = <T>(selector: Selector<T>): T => {
@@ -485,12 +481,15 @@ export class Store<BlockCtx> {
   };
 
   trySetInitialValue = <T>(key: Block<T> | Loader<T>, initialValue: () => T): boolean => {
+    if (this.has(key)) {
+      return false;
+    }
     if (key instanceof Block) {
-      const [, initialized] = this.getOrInitBlockState(key, initialValue);
-      return initialized;
+      this.getOrInitBlockState(key, initialValue);
+      return true;
     } else {
-      const [, initialized] = this.getOrInitLoaderState(key, initialValue);
-      return initialized;
+      this.getOrInitLoaderState(key, initialValue);
+      return true;
     }
   };
 
