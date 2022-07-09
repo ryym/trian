@@ -77,6 +77,34 @@ describe("Selector and Store", () => {
         expect(values[0]).toBe(values[1]); // the final value keeps referencial equality.
       });
     });
+
+    describe("when computation failed", () => {
+      it("throws original error and keeps selector state", () => {
+        let shouldThrow = false;
+        const nums = block({ default: () => [10, 20, 30] });
+        const firstNum = selector({
+          get: ({ get }) => {
+            if (shouldThrow) {
+              throw "fake-error";
+            }
+            return get(nums)[0];
+          },
+        });
+
+        const store = createStore();
+        const value1 = store.getValue(firstNum);
+        store.setValue(nums, [8, 9]);
+
+        shouldThrow = true;
+        expect(() => {
+          store.getValue(firstNum);
+        }).toThrow("fake-error");
+
+        shouldThrow = false;
+        const value2 = store.getValue(firstNum);
+        expect([value1, value2]).toEqual([10, 8]);
+      });
+    });
   });
 
   describe("store.delete", () => {

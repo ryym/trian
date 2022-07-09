@@ -161,7 +161,6 @@ export class Store<BlockCtx> {
     }
 
     state.dependencies.forEach((d) => d.unsubscribe());
-    state.dependencies = [];
 
     const invalidateCache = () => {
       if (state.cache.state === "Fresh") {
@@ -171,10 +170,11 @@ export class Store<BlockCtx> {
       }
     };
 
+    const nextDependencies: typeof state.dependencies = [];
     const get = <U>(key: Block<U> | Selector<U>): U => {
       const unsubscribe = this.onInvalidate(key, invalidateCache);
       const value = this.getValue(key);
-      state.dependencies.push({ key, unsubscribe, lastValue: value });
+      nextDependencies.push({ key, unsubscribe, lastValue: value });
       return value;
     };
 
@@ -186,6 +186,7 @@ export class Store<BlockCtx> {
     }
 
     state.cache = { state: "Fresh", value };
+    state.dependencies = nextDependencies;
     return state.cache.value;
   };
 
