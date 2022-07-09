@@ -548,6 +548,16 @@ export class Store<BlockCtx> {
     state.deletionListeners.forEach((f) => f({ last }));
     return true;
   };
+
+  has = (key: AnyGetKey<any>): boolean => {
+    if (key instanceof Block) {
+      return this.blockStates.has(key);
+    } else if (key instanceof Selector) {
+      return this.selectorStates.has(key);
+    } else {
+      return this.loaderStates.has(key);
+    }
+  };
 }
 
 export const createStore = <BlockCtx = undefined>(
