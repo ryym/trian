@@ -22,12 +22,12 @@ Trian is my experimental state management library for [React][react], heavily in
 ```tsx
 import { block, createStore, createDispatch, Thunk } from 'trian';
 
-const Count = block({
+export const Count = block({
     default: () => 0,
 });
 
-const Increment = (n: number = 1): Thunk => ({ update }) => {
-  update(Count, (cnt) => cnt + n);
+const Increment = (n: number = 1): Thunk => ({ set }) => {
+  set(Count, (cnt) => cnt + n);
 };
 
 const store = createStore();
@@ -43,6 +43,42 @@ dispatch(Increment, 20);
 console.log(store.getValue(Count)); //=> 21
 ```
 
+#### Selector
+
+```tsx
+import { selector } from 'trian';
+import { Counter } from './Counter';
+
+export const DoubledCount = selector({
+  // Called only when the Counter value changed.
+  get: ({ get }) => {
+    return get(Counter) * 2;
+  },
+});
+```
+
+#### Loader
+
+```tsx
+import { block, loader } from 'trian';
+
+const UserId = block<string | null>({
+  default: () => null,
+});
+
+const UserLoader = loader({
+  get: async ({ get }): Promise<User> => {
+    const userId = get(UserId);
+    if (userId == null) {
+      return null;
+    }
+    return fetchUser(userId);
+  },
+});
+
+// XXX: Usage
+```
+
 ### Use with React
 
 ```typescript
@@ -54,8 +90,8 @@ const Count = block({
   default: () => 0,
 });
 
-const Increment = (n: number = 1): Thunk => ({ update }) => {
-  update(Count, (cnt) => cnt + n);
+const Increment = (n: number = 1): Thunk => ({ set }) => {
+  set(Count, (cnt) => cnt + n);
 };
 
 function Counter() {
@@ -101,6 +137,5 @@ setTimeout(() => {
 }, 1000);
 ```
 
-- `useValue`, `useAsyncValue`
-- `useAction`
+- `useValue`, `useAsyncValue`, `useResolvedValue`
 - `useDispatch`
