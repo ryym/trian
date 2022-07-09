@@ -5,9 +5,14 @@ import { Loader } from "../loader";
 export const useResolvedValue = <T>(passedLoader: Loader<T>): T => {
   const { store } = useTrianContext();
   const [loader] = useState(passedLoader);
-  const cache = store.getCacheValue(loader);
-  if (cache == null) {
+
+  const result = store.getSettledAsyncResult(loader);
+  if (result == null) {
     throw store.getAsyncValue(loader);
   }
-  return cache.value;
+  if (!result.ok) {
+    throw result.error;
+  }
+
+  return result.value;
 };
