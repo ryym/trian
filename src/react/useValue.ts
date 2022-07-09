@@ -10,8 +10,11 @@ export const useValue = <T>(passedKey: Block<T> | Selector<T>): T => {
   const [value, setValue] = useState(store.getValue(key));
 
   useEffect(() => {
-    const unsubscribe = store.onInvalidate(key, () => {
-      setValue(store.getValue(key));
+    const unsubscribe = store.onInvalidate(key, (event) => {
+      const value = store.getValue(key);
+      if (event.last == null || event.last.value !== value) {
+        setValue(value);
+      }
     });
     return unsubscribe;
   }, []);
