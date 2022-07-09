@@ -90,6 +90,16 @@ const initLoaderState = <T>(initialValue: null | (() => T)): LoaderState<T> => {
   };
 };
 
+export type SettledAsyncResult<T> =
+  | {
+      readonly ok: true;
+      readonly value: T;
+    }
+  | {
+      readonly ok: false;
+      readonly error: unknown;
+    };
+
 export class ActiveValueDeletionError extends Error {
   constructor(valueType: "block" | "selector" | "loader", listenerCount: number) {
     super(`cannot delete subscribed ${valueType} (${listenerCount} listeners exist)`);
@@ -104,6 +114,7 @@ export class Store<BlockCtx> {
   private readonly selectorStates = new Map<Selector<any>, SelectorState<any>>();
 
   private readonly loaderStates = new Map<Loader<any>, LoaderState<any>>();
+  private readonly loaderErrors = new Map<Loader<any>, unknown>();
 
   constructor(blockContext: BlockCtx) {
     this.blockContext = blockContext;
@@ -202,6 +213,22 @@ export class Store<BlockCtx> {
     return this.getLoaderValue(key);
   };
 
+  getSettledAsyncResult = <T>(key: Loader<T>): SettledAsyncResult<T> | null => {
+    return this.getSettledLoaderResult(key);
+  };
+
+  private getSettledLoaderResult = <T>(key: Loader<T>): SettledAsyncResult<T> | null => {
+    const cache = this.getCacheValue(key);
+    if (cache != null) {
+      return { ok: true, value: cache.value };
+    }
+    if (this.loaderErrors.has(key)) {
+      const error = this.loaderErrors.get(key);
+      return { ok: false, error };
+    }
+    return null;
+  };
+
   _willRecomputeOnGet = <T>(loader: Loader<T>): boolean => {
     const state = this.getLoaderState(loader);
     return state.currentUpdate != null || this.precomputeCacheValidity(state) !== "Fresh";
@@ -220,6 +247,7 @@ export class Store<BlockCtx> {
       return state.cache.value;
     }
 
+    this.loaderErrors.delete(loader);
     state.dependencies.forEach((d) => d.unsubscribe());
 
     const invalidateCache = () => {
@@ -262,6 +290,9 @@ export class Store<BlockCtx> {
       // Run the loader computation. If any dependencies are updated during the computation,
       // discard it and run the new computation.
       value = await state.currentUpdate.resolveWithAutoRevalidation();
+    } catch (err) {
+      this.loaderErrors.set(loader, err);
+      throw err;
     } finally {
       state.currentUpdate = null;
     }

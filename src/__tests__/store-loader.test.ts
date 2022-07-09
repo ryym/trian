@@ -277,4 +277,59 @@ describe("Loader and Store", () => {
       });
     });
   });
+
+  describe("store.getSettledAsyncResult", () => {
+    it("returns null if no settled result exists", () => {
+      const store = createStore();
+      const someValue = loader({ get: async () => 1 });
+      const result = store.getSettledAsyncResult(someValue);
+      expect(result).toBe(null);
+    });
+
+    it("returns cached value if async computation successfully finished", async () => {
+      const store = createStore();
+      const someValue = loader({ get: async () => 1 });
+      const value = await store.getAsyncValue(someValue);
+      const result = store.getSettledAsyncResult(someValue);
+      expect([value, result]).toEqual([1, { ok: true, value: 1 }]);
+    });
+
+    it("returns caught error if async computation failed", async () => {
+      const store = createStore();
+      const someValue = loader({
+        get: async () => {
+          throw "fake-error";
+        },
+      });
+      const value = await store.getAsyncValue(someValue).catch(() => 0);
+      const result = store.getSettledAsyncResult(someValue);
+      expect([value, result]).toEqual([0, { ok: false, error: "fake-error" }]);
+    });
+
+    it("clears error on next computation", async () => {
+      let shouldThrow = true;
+      const store = createStore();
+      const someValue = loader({
+        get: async () => {
+          if (shouldThrow) {
+            throw "fake-error";
+          }
+          return 5;
+        },
+      });
+      const value1 = await store.getAsyncValue(someValue).catch(() => 0);
+      const result1 = store.getSettledAsyncResult(someValue);
+
+      shouldThrow = false;
+      const value2 = await store.getAsyncValue(someValue);
+      const result2 = store.getSettledAsyncResult(someValue);
+
+      expect([value1, value2, result1, result2]).toEqual([
+        0,
+        5,
+        { ok: false, error: "fake-error" },
+        { ok: true, value: 5 },
+      ]);
+    });
+  });
 });
