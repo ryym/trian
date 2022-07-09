@@ -247,5 +247,34 @@ describe("Loader and Store", () => {
         });
       });
     });
+
+    describe("when computation failed", () => {
+      it("throws original error and keeps loader state", async () => {
+        let shouldThrow = false;
+        const numValue = block({ default: () => 4 });
+        const squareValue = loader({
+          get: async ({ get }) => {
+            console.log("compute!", Date.now());
+            if (shouldThrow) {
+              throw "fake-error";
+            }
+            const n = get(numValue);
+            return n * n;
+          },
+        });
+
+        const store = createStore();
+        const value1 = await store.getAsyncValue(squareValue);
+        store.setValue(numValue, 6);
+
+        shouldThrow = true;
+        const error1 = await store.getAsyncValue(squareValue).catch((err) => err);
+        expect(error1).toEqual("fake-error");
+
+        shouldThrow = false;
+        const value2 = await store.getAsyncValue(squareValue);
+        expect([value1, value2]).toEqual([16, 36]);
+      });
+    });
   });
 });

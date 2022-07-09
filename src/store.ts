@@ -221,7 +221,6 @@ export class Store<BlockCtx> {
     }
 
     state.dependencies.forEach((d) => d.unsubscribe());
-    state.dependencies = [];
 
     const invalidateCache = () => {
       if (state.cache.state === "Fresh") {
@@ -234,14 +233,15 @@ export class Store<BlockCtx> {
       }
     };
 
+    const nextDependencies: typeof state.dependencies = [];
     const get = <K extends AnyGetKey<any>>(key: K): AnyGetResult<K> => {
       const unsubscribe = this.onInvalidate(key, invalidateCache);
       if (key instanceof Loader) {
-        state.dependencies.push({ key, unsubscribe });
+        nextDependencies.push({ key, unsubscribe });
         return this.getAnyValue(key);
       } else {
         const value = this.getValue(key);
-        state.dependencies.push({ key, unsubscribe, lastValue: value });
+        nextDependencies.push({ key, unsubscribe, lastValue: value });
         return value;
       }
     };
@@ -257,10 +257,14 @@ export class Store<BlockCtx> {
       },
     });
 
-    // Run the loader computation. If any dependencies are updated during the computation,
-    // discard it and run the new computation.
-    let value: T = await state.currentUpdate.resolveWithAutoRevalidation();
-    state.currentUpdate = null;
+    let value: T;
+    try {
+      // Run the loader computation. If any dependencies are updated during the computation,
+      // discard it and run the new computation.
+      value = await state.currentUpdate.resolveWithAutoRevalidation();
+    } finally {
+      state.currentUpdate = null;
+    }
 
     if (state.cache.last != null && loader.isSame(state.cache.last.value, value)) {
       // If the computed result is same as the last value, use the last value to
@@ -269,6 +273,7 @@ export class Store<BlockCtx> {
     }
 
     state.cache = { state: "Fresh", value };
+    state.dependencies = nextDependencies;
     return value;
   };
 
