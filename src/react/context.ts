@@ -1,4 +1,4 @@
-import { createContext, useContext, createElement } from "react";
+import { createContext, useContext, createElement, useMemo } from "react";
 import type { ReactNode, FunctionComponentElement, ProviderProps } from "react";
 import { Dispatch, createDispatch } from "../dispatch";
 import { Store } from "../store";
@@ -18,13 +18,15 @@ export interface TrianProviderProps {
 
 type TrianProviderType = FunctionComponentElement<ProviderProps<TrianContextValue<any> | null>>;
 
-export const TrianProvider = ({
-  store,
-  dispatch,
-  children,
-}: TrianProviderProps): TrianProviderType => {
-  dispatch = dispatch ?? createDispatch(store, undefined);
-  return createElement(TrianContext.Provider, { value: { store, dispatch } }, children);
+export const TrianProvider = (props: TrianProviderProps): TrianProviderType => {
+  // Keep the referential equality of context value to avoid unnecessary re-rendering.
+  // Without this, all components using `useTrianContext` are re-rendered when TrianProvider is re-rendered.
+  const contextValue: TrianContextValue<unknown> = useMemo(() => {
+    const dispatch = props.dispatch || createDispatch(props.store, undefined);
+    return { store: props.store, dispatch };
+  }, [props.store, props.dispatch]);
+
+  return createElement(TrianContext.Provider, { value: contextValue }, props.children);
 };
 
 export const useTrianContext = <Ctx>(): TrianContextValue<Ctx> => {
