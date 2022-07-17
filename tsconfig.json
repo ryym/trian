@@ -9,8 +9,8 @@
     "sourceMap": true,
     "declaration": true,
     "declarationDir": "dist/types",
-    "outDir": "dist/lib"
+    "outDir": "dist/lib",
+    "noEmit": true
   },
-  "include": ["src"],
-  "exclude": ["**/__tests__/**"]
+  "include": ["src"]
 }

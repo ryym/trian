@@ -18,8 +18,10 @@
     "comparer.d.ts"
   ],
   "scripts": {
-    "build": "npx tsc",
-    "build:w": "npx tsc --watch",
+    "build": "npx tsc -p tsconfig.build.json",
+    "build:w": "yarn build --watch",
+    "typecheck": "npx tsc",
+    "typecheck:w": "yarn typecheck --watch",
     "test": "npx jest",
     "test:w": "npx jest --watch",
     "lint": "npx eslint . --ext js,ts",
