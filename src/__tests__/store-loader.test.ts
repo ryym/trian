@@ -332,4 +332,39 @@ describe("Loader and Store", () => {
       ]);
     });
   });
+
+  describe("[regression] avoid unnecessary double computation", () => {
+    it.only("reuse the currentUpdate promise correctly", async () => {
+      const numValue = block({
+        default: () => 1,
+      });
+
+      let loadCount = 0;
+      const numLoader = loader({
+        get: async (p) => {
+          loadCount += 1;
+          await new Promise((r) => setTimeout(r, 10));
+          return p.get(numValue) * 10;
+        },
+      });
+
+      const store = createStore();
+
+      const value = await store.getAsyncValue(numLoader);
+      expect([value, loadCount]).toEqual([10, 1]);
+
+      return new Promise<void>((resolve) => {
+        // Recompute the numLoader result immediately on its invalidation.
+        store.onInvalidate(numLoader, async () => {
+          try {
+            const value = await store.getAsyncValue(numLoader);
+            expect([value, loadCount]).toEqual([20, 2]);
+          } finally {
+            resolve();
+          }
+        });
+        store.setValue(numValue, (n) => n + 1);
+      });
+    });
+  });
 });
