@@ -1,6 +1,14 @@
 import * as React from "react";
 import { render } from "react-dom";
-import { createStore, createDispatch, block, selector, loader, Thunk } from "../..";
+import {
+  createStore,
+  createDispatch,
+  block,
+  selector,
+  loader,
+  Thunk,
+  createContextKey,
+} from "../..";
 import { TrianProvider, useValue, useAsyncValue, useDispatch } from "../../react";
 
 const { useEffect, useState } = React;
@@ -16,17 +24,19 @@ const SuperCount = selector({
   },
 });
 
-const Increment = (): Thunk<void, string> => {
-  return ({ set }, ctx) => {
-    console.log("increment with context:", ctx);
+const Increment = (): Thunk => {
+  return ({ set }) => {
+    console.log("increment");
     set(Count, (cnt) => cnt + 1);
   };
 };
 
 const cleanHash = (hash: string): string => hash && hash.slice(1);
 
+const RouteContextKey = createContextKey<string>();
+
 const Route = block({
-  default: ({ route }: { route?: string } = {}) => route || "",
+  default: (ctx) => ctx.get(RouteContextKey) || "",
 });
 
 const SetRoute = (route: string): Thunk => {
@@ -115,11 +125,10 @@ function Footer() {
   );
 }
 
-const store = createStore({
-  route: cleanHash(document.location.hash),
-});
+const store = createStore();
+store.context.set(RouteContextKey, cleanHash(document.location.hash));
 
-const customDispatch = createDispatch(store, "sample-context");
+const customDispatch = createDispatch(store);
 
 const AsyncCount = loader({
   get: ({ get }) =>
