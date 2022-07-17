@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useTrianContext } from "./context";
+import { useTrianContext } from "./TrianContext";
 import { Block } from "../block";
 import { Loader } from "../loader";
 

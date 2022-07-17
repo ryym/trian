@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useTrianContext } from "./context";
+import { useTrianContext } from "./TrianContext";
 import { Loader } from "../loader";
 
 export const useResolvedValue = <T>(passedLoader: Loader<T>): T => {

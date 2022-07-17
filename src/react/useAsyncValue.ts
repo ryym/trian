@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useTrianContext } from "./context";
+import { useTrianContext } from "./TrianContext";
 import { Loader } from "../loader";
 
 export type AsyncResult<T> =
