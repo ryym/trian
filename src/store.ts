@@ -247,13 +247,14 @@ export class Store<BlockCtx> {
     state.dependencies.forEach((d) => d.unsubscribe());
 
     const invalidateCache = () => {
+      if (state.currentUpdate != null) {
+        state.currentUpdate.requestToRevalidate();
+        return;
+      }
       if (state.cache.state === "Fresh") {
         const last = { value: state.cache.value };
         state.cache = { state: "MaybeStale", last: last };
         state.invalidationListeners.forEach((f) => f({ last }));
-      }
-      if (state.currentUpdate != null) {
-        state.currentUpdate.requestToRevalidate();
       }
     };
 

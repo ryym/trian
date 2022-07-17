@@ -334,7 +334,7 @@ describe("Loader and Store", () => {
   });
 
   describe("[regression] avoid unnecessary double computation", () => {
-    it.only("reuse the currentUpdate promise correctly", async () => {
+    it("reuse the currentUpdate promise correctly", async () => {
       const numValue = block({
         default: () => 1,
       });
