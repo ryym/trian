@@ -1,5 +1,6 @@
 export * from "./block";
 export * from "./blockFamily";
+export * from "./context";
 export * from "./dispatch";
 export * from "./selector";
 export * from "./selectorFamily";

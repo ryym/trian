@@ -1,4 +1,5 @@
 import { Block, Comparer } from "./block";
+import { Context } from "./context";
 import { Selector } from "./selector";
 
 export type AnyGet = <K extends AnyGetKey<any>>(key: K) => AnyGetResult<K>;
@@ -11,9 +12,9 @@ export type AnyGetResult<K extends AnyGetKey<any>> = K extends Loader<infer T>
   ? T
   : never;
 
-export interface LoaderConfig<T, Ctx> {
+export interface LoaderConfig<T> {
   readonly name?: string;
-  readonly get: LoaderFn<T, Ctx>;
+  readonly get: LoaderFn<T>;
   readonly isSame?: Comparer<T>;
   readonly onCacheInvalidate?: (event: LoaderCacheInvalidateEvent<T>) => void;
   readonly onDelete?: (event: LoaderDeletionEvent<T>) => void;
@@ -27,21 +28,21 @@ export interface LoaderDeletionEvent<T> {
   readonly last: null | { value: T };
 }
 
-export type LoaderFn<T, Ctx> = (params: LoaderFnParams, ctx: Ctx) => Promise<T>;
+export type LoaderFn<T> = (params: LoaderFnParams, ctx: Context) => Promise<T>;
 
 export interface LoaderFnParams {
   readonly get: AnyGet;
   set<T>(block: Block<T>, next: T | ((cur: T) => T)): void;
 }
 
-export class Loader<T, Ctx = any> {
+export class Loader<T> {
   readonly name?: string;
-  private readonly get: LoaderFn<T, Ctx>;
+  private readonly get: LoaderFn<T>;
   readonly isSame: Comparer<T>;
   readonly onCacheInvalidate?: (event: LoaderCacheInvalidateEvent<T>) => void;
   readonly onDelete?: (event: LoaderDeletionEvent<T>) => void;
 
-  constructor(config: LoaderConfig<T, Ctx>) {
+  constructor(config: LoaderConfig<T>) {
     this.name = config.name;
     this.get = config.get;
     this.isSame = config.isSame || Object.is;
@@ -49,11 +50,11 @@ export class Loader<T, Ctx = any> {
     this.onDelete = config.onDelete;
   }
 
-  run(params: LoaderFnParams, ctx: Ctx): Promise<T> {
+  run(params: LoaderFnParams, ctx: Context): Promise<T> {
     return this.get(params, ctx);
   }
 }
 
-export const loader = <T, Ctx = unknown>(config: LoaderConfig<T, Ctx>): Loader<T, Ctx> => {
+export const loader = <T>(config: LoaderConfig<T>): Loader<T> => {
   return new Loader(config);
 };
