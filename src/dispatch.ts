@@ -1,13 +1,14 @@
 import { Store, UpdateValue } from "./store";
 import { Block } from "./block";
 import { AnyGet, AnyGetKey } from "./loader";
+import { Context } from "./context";
 
-export const createDispatch = <Ctx>(store: Store<any>, ctx: Ctx): Dispatch<Ctx> => {
-  function dispatch<As extends unknown[], R>(action: Action<As, R, Ctx>, ...args: As): R {
-    return action(...args)(params, ctx);
+export const createDispatch = (store: Store): Dispatch => {
+  function dispatch<As extends unknown[], R>(action: Action<As, R>, ...args: As): R {
+    return action(...args)(params, store.context);
   }
 
-  const params: ThunkParams<Ctx> = {
+  const params: ThunkParams = {
     get: store.getAnyValue,
     set: store.setValue,
     delete: store.delete,
@@ -17,21 +18,21 @@ export const createDispatch = <Ctx>(store: Store<any>, ctx: Ctx): Dispatch<Ctx> 
   return dispatch;
 };
 
-export interface Dispatch<Ctx> {
-  <As extends unknown[], R>(action: Action<As, R, Ctx>, ...args: As): R;
+export interface Dispatch {
+  <As extends unknown[], R>(action: Action<As, R>, ...args: As): R;
 }
 
-export interface Action<Args extends unknown[], Result, Ctx = unknown> {
-  (...args: Args): Thunk<Result, Ctx>;
+export interface Action<Args extends unknown[], Result> {
+  (...args: Args): Thunk<Result>;
 }
 
-export interface ThunkParams<Ctx> {
+export interface ThunkParams {
   get: AnyGet;
   set<T>(block: Block<T>, next: T | UpdateValue<T>): void;
   delete(key: AnyGetKey<any>): boolean;
-  dispatch<As extends unknown[], R>(action: Action<As, R, Ctx>, ...args: As): R;
+  dispatch<As extends unknown[], R>(action: Action<As, R>, ...args: As): R;
 }
 
-export interface Thunk<Result = void, Ctx = unknown> {
-  (params: ThunkParams<Ctx>, context: Ctx): Result;
+export interface Thunk<Result = void> {
+  (params: ThunkParams, context: Context): Result;
 }

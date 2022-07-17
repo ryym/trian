@@ -131,34 +131,4 @@ describe("Block and Store", () => {
       });
     });
   });
-
-  describe("Block context", () => {
-    class AppState {
-      constructor(readonly loggedIn: boolean = false, readonly version: string = "1.0") {}
-    }
-
-    type Context = { userID: number | null; version: string };
-
-    const appStateValue = block({
-      default: (ctx?: Context) => {
-        if (ctx == null) {
-          return new AppState();
-        }
-        return new AppState(ctx.userID != null, ctx.version);
-      },
-    });
-
-    it("allows block to compute default value dynamically", () => {
-      const context: Context = { userID: 1, version: "1.2" };
-      const store = createStore(context);
-      const value = store.getValue(appStateValue);
-      expect(value).toEqual(new AppState(true, "1.2"));
-    });
-
-    it("does not require store to have context", () => {
-      const store = createStore();
-      const value = store.getValue(appStateValue);
-      expect(value).toEqual(new AppState(false, "1.0"));
-    });
-  });
 });

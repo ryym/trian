@@ -3,6 +3,7 @@ import { Loader, LoaderCacheInvalidateEvent, LoaderDeletionEvent } from "./loade
 import { Selector, SelectorCacheInvalidateEvent, SelectorDeletionEvent } from "./selector";
 import { AnyGetKey, AnyGetResult } from "./loader";
 import { RevalidatableResolver } from "./RevalidatableResolver";
+import { Context, createContext } from "./context";
 
 export type UpdateValue<T> = (value: T) => T;
 
@@ -106,18 +107,15 @@ export class ActiveValueDeletionError extends Error {
   }
 }
 
-export class Store<BlockCtx> {
+export class Store {
+  readonly context: Context;
   private readonly blockStates = new Map<Block<any>, BlockState<any>>();
-
-  private readonly blockContext: BlockCtx;
-
   private readonly selectorStates = new Map<Selector<any>, SelectorState<any>>();
-
   private readonly loaderStates = new Map<Loader<any>, LoaderState<any>>();
   private readonly loaderErrors = new Map<Loader<any>, unknown>();
 
-  constructor(blockContext: BlockCtx) {
-    this.blockContext = blockContext;
+  constructor() {
+    this.context = createContext();
   }
 
   getValue = <T>(key: Block<T> | Selector<T>): T => {
@@ -144,7 +142,7 @@ export class Store<BlockCtx> {
       return state;
     }
 
-    const value = initialValue == null ? block.default(this.blockContext) : initialValue();
+    const value = initialValue == null ? block.default(this.context) : initialValue();
     state = {
       current: value,
       changeListeners: [],
@@ -274,7 +272,7 @@ export class Store<BlockCtx> {
     // Store the current update so that concurrent loader calls can share and await a single promise.
     state.currentUpdate = new RevalidatableResolver({
       get: () => {
-        return loader.run({ get, set: this.setValue }, this.blockContext);
+        return loader.run({ get, set: this.setValue }, this.context);
       },
       revalidate: () => {
         this.loaderStates.set(loader, { ...state, currentUpdate: null });
@@ -560,8 +558,6 @@ export class Store<BlockCtx> {
   };
 }
 
-export const createStore = <BlockCtx = undefined>(
-  blockCtx?: BlockCtx,
-): Store<BlockCtx | undefined> => {
-  return new Store(blockCtx);
+export const createStore = (): Store => {
+  return new Store();
 };
