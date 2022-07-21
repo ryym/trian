@@ -78,12 +78,9 @@ const initSelectorState = <T>(): SelectorState<T> => {
   };
 };
 
-const initLoaderState = <T>(initialValue: null | (() => T)): LoaderState<T> => {
+const initLoaderState = <T>(): LoaderState<T> => {
   return {
-    cache: {
-      state: "Stale",
-      last: initialValue == null ? null : { value: initialValue() },
-    },
+    cache: { state: "Stale", last: null },
     currentUpdate: null,
     invalidationListeners: [],
     deletionListeners: [],
@@ -133,16 +130,12 @@ export class Store {
   };
 
   private getBlockState<T>(block: Block<T>): BlockState<T> {
-    return this.getOrInitBlockState(block, null);
-  }
-
-  private getOrInitBlockState<T>(block: Block<T>, initialValue: null | (() => T)): BlockState<T> {
     let state = this.blockStates.get(block);
     if (state != null) {
       return state;
     }
 
-    const value = initialValue == null ? block.default(this.context) : initialValue();
+    const value = block.default(this.context);
     state = {
       current: value,
       changeListeners: [],
@@ -327,28 +320,18 @@ export class Store {
   }
 
   private getLoaderState<T>(loader: Loader<T>): LoaderState<T> {
-    const [state] = this.getOrInitLoaderState(loader, null);
-    return state;
-  }
-
-  private getOrInitLoaderState<T>(
-    loader: Loader<T>,
-    initialValue: null | (() => T),
-  ): [state: LoaderState<T>, initialized: boolean] {
     let state = this.loaderStates.get(loader);
-    if (state != null) {
-      return [state, false];
+    if (state == null) {
+      state = initLoaderState();
+      if (loader.onCacheInvalidate != null) {
+        state.invalidationListeners.push(loader.onCacheInvalidate);
+      }
+      if (loader.onDelete != null) {
+        state.deletionListeners.push(loader.onDelete);
+      }
+      this.loaderStates.set(loader, state);
     }
-
-    state = initLoaderState(initialValue);
-    if (loader.onCacheInvalidate != null) {
-      state.invalidationListeners.push(loader.onCacheInvalidate);
-    }
-    if (loader.onDelete != null) {
-      state.deletionListeners.push(loader.onDelete);
-    }
-    this.loaderStates.set(loader, state);
-    return [state, true];
+    return state;
   }
 
   private precomputeCacheValidity<T>(state: CachableState<T>): CacheValidity {
@@ -477,19 +460,6 @@ export class Store {
     const lastValue = state.current;
     state.current = value;
     state.changeListeners.forEach((f) => f({ lastValue, value }));
-  };
-
-  trySetInitialValue = <T>(key: Block<T> | Loader<T>, initialValue: () => T): boolean => {
-    if (this.has(key)) {
-      return false;
-    }
-    if (key instanceof Block) {
-      this.getOrInitBlockState(key, initialValue);
-      return true;
-    } else {
-      this.getOrInitLoaderState(key, initialValue);
-      return true;
-    }
   };
 
   delete = (key: AnyGetKey<any>): boolean => {
