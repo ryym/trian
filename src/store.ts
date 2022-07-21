@@ -354,7 +354,7 @@ export class Store {
   private precomputeCacheValidity<T>(state: CachableState<T>): CacheValidity {
     // When the cache is marked as MaybeStale, check if any of its dependencies have been actually changed.
     // If so, the cache is Stale. Otherwise we can keep using the current cache so mark it as Fresh.
-    if (state.cache.state === "MaybeStale" && state.cache.last != null) {
+    if (state.cache.state === "MaybeStale") {
       const allFresh = state.dependencies.every((d) => {
         if (d.key instanceof Loader) {
           // If the dependency is a loader, avoid running value computation here.
