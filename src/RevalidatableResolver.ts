@@ -5,10 +5,8 @@ export interface RevalidatableResolverConfig<T> {
 
 interface RevalidationRequestWaiter {
   readonly promise: Promise<void>;
-  readonly fns: {
-    readonly acceptRequest: () => void;
-    readonly close: () => void;
-  };
+  readonly sendRequest: () => void;
+  readonly close: () => void;
 }
 
 type ResolvedResult<T> =
@@ -31,7 +29,7 @@ export class RevalidatableResolver<T> {
   }
 
   requestToRevalidate = (): void => {
-    this.revalidationRequest.fns.acceptRequest();
+    this.revalidationRequest.sendRequest();
   };
 
   resolveWithAutoRevalidation = (): Promise<T> => {
@@ -57,12 +55,21 @@ export class RevalidatableResolver<T> {
   };
 
   private makeRevalidationRequestWaiter(): RevalidationRequestWaiter {
-    let fns: RevalidationRequestWaiter["fns"];
+    const controller = new AbortController();
     const promise = new Promise<void>((resolve, reject) => {
-      fns = { acceptRequest: resolve, close: reject };
+      controller.signal.addEventListener("abort", () => {
+        if (controller.signal.reason === "revalidate") {
+          resolve();
+        } else {
+          reject();
+        }
+      });
     });
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-    return { promise, fns: fns! };
+    return {
+      promise,
+      sendRequest: () => controller.abort("revalidate"),
+      close: () => controller.abort("close"),
+    };
   }
 
   private resolveOrCancel(
@@ -71,7 +78,6 @@ export class RevalidatableResolver<T> {
   ): Promise<ResolvedResult<T>> {
     return Promise.race([
       valuePromise.then((value) => {
-        rrw.fns.close();
         return { type: "resolved", value } as ResolvedResult<T>;
       }),
       rrw.promise
@@ -79,6 +85,9 @@ export class RevalidatableResolver<T> {
         .then(() => {
           return { type: "revalidationRequested" } as ResolvedResult<T>;
         }),
-    ]);
+    ]).then((value) => {
+      rrw.close();
+      return value;
+    });
   }
 }
