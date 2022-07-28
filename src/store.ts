@@ -4,6 +4,17 @@ import { Selector, SelectorCacheInvalidateEvent, SelectorDeletionEvent } from ".
 import { AnyGetKey, AnyGetResult } from "./loader";
 import { RevalidatableResolver } from "./RevalidatableResolver";
 import { Context, createContext } from "./context";
+import {
+  Loadable,
+  loadableError,
+  LoadableError,
+  loadableLoading,
+  LoadableLoading,
+  loadableValue,
+  LoadableValue,
+} from "./loadable";
+import { Resource, ResourceFetchParams } from "./resource";
+import { makeRestartablePromise } from "./restartablePromise";
 
 export type UpdateValue<T> = (value: T) => T;
 
@@ -98,6 +109,66 @@ export type SettledAsyncResult<T> =
       readonly error: unknown;
     };
 
+export interface ResourceState<T> {
+  cache: ResourceCache<T>;
+  dependencies: AnyResourceCacheDependency<any>[];
+  invalidationListeners: EventListener<ValueInvalidationEvent<T>>[];
+  // deletionListeners, resourceResultChangeListeners
+}
+
+const initResourceState = <T>(): ResourceState<T> => {
+  return {
+    cache: { state: "Stale", loaded: null },
+    invalidationListeners: [],
+    dependencies: [],
+  };
+};
+
+export type AnyResourceCacheDependency<T> = SyncCacheDependency<T> | ResourceCacheDependency<T>;
+
+export type ResourceCache<T> =
+  | {
+      readonly state: "Stale";
+      readonly loaded: null | LoadableValue<T>;
+    }
+  | {
+      readonly state: "MaybeStale";
+      readonly loaded: LoadableValue<T>;
+    }
+  | {
+      readonly state: "Fresh";
+      readonly loaded: LoadableValue<T>;
+    }
+  | {
+      readonly state: "Loading";
+      readonly loadable: LoadableLoading<T>;
+      readonly lastLoaded: null | LoadableValue<T>;
+      readonly revalidate: () => void;
+    }
+  | {
+      readonly state: "Error";
+      readonly result: LoadableError<T>;
+      readonly lastLoaded: null | LoadableValue<T>;
+    };
+
+export type ResourceCacheState = ResourceCache<unknown>["state"];
+
+export interface ResourceCacheDependency<T> {
+  readonly key: Resource<T>;
+  readonly unsubscribe: Unsubscribe;
+}
+
+export interface GetResourceParams {
+  // If true, skip fetching resource when the last state is error.
+  keepError?: boolean;
+}
+
+interface SetResourceValueParams<T> {
+  readonly value: T;
+  readonly isTentative?: boolean;
+  readonly nextDependencies: AnyResourceCacheDependency<any>[] | null;
+}
+
 export class ActiveValueDeletionError extends Error {
   constructor(valueType: "block" | "selector" | "loader", listenerCount: number) {
     super(`cannot delete subscribed ${valueType} (${listenerCount} listeners exist)`);
@@ -110,6 +181,7 @@ export class Store {
   private readonly selectorStates = new Map<Selector<any>, SelectorState<any>>();
   private readonly loaderStates = new Map<Loader<any>, LoaderState<any>>();
   private readonly loaderErrors = new Map<Loader<any>, unknown>();
+  private readonly resourceStates = new Map<Resource<any>, ResourceState<any>>();
 
   constructor() {
     this.context = createContext();
@@ -334,6 +406,147 @@ export class Store {
     return state;
   }
 
+  getResourceValue = <T>(resource: Resource<T>): Promise<T> => {
+    return this.getResource(resource).promise();
+  };
+
+  getResource = <T>(resource: Resource<T>, params: GetResourceParams = {}): Loadable<T> => {
+    const state = this.getResourceState(resource);
+
+    if (state.cache.state === "Loading") {
+      return state.cache.loadable;
+    }
+    if (state.cache.state === "Error" && params.keepError) {
+      return state.cache.result;
+    }
+
+    this.precomputeResourceCacheValidity(state);
+    if (state.cache.state === "Fresh") {
+      return state.cache.loaded;
+    }
+
+    let prebuilt: T | undefined = undefined;
+    if (state.cache.state === "Stale" && state.cache.loaded == null) {
+      prebuilt = resource.prebuild({ get: this.getValue }, this.context);
+      if (prebuilt != null) {
+        this.setResourceValue(resource, {
+          value: prebuilt,
+          isTentative: true,
+          nextDependencies: null,
+        });
+      }
+    }
+
+    state.dependencies.forEach((d) => d.unsubscribe());
+
+    const invalidateCache = () => {
+      switch (state.cache.state) {
+        case "Loading": {
+          state.cache.revalidate();
+          break;
+        }
+        case "Fresh": {
+          const last = { value: state.cache.loaded.value };
+          state.cache = { state: "MaybeStale", loaded: state.cache.loaded };
+          state.invalidationListeners.forEach((f) => f({ last }));
+          break;
+        }
+        case "Error":
+        case "Stale":
+        case "MaybeStale": {
+          break;
+        }
+      }
+    };
+
+    const [revalidate, promise] = makeRestartablePromise(async () => {
+      const nextDependencies: typeof state.dependencies = [];
+      const fetchParams: ResourceFetchParams = {
+        get: (key) => {
+          const unsubscribe = this.onInvalidate(key, invalidateCache);
+          const value = this.getValue(key);
+          nextDependencies.push({ key, unsubscribe, lastValue: value });
+          return value;
+        },
+        fetch: (key) => {
+          const unsubscribe = this.onInvalidate(key, invalidateCache);
+          nextDependencies.push({ key, unsubscribe });
+          return this.getResourceValue(key);
+        },
+      };
+      const value = await resource.fetch(fetchParams, this.context);
+      return [value, nextDependencies] as const;
+    });
+
+    const finalPromise = promise
+      .then(([value, nextDependencies]) => {
+        this.setResourceValue(resource, { value, nextDependencies });
+        return value;
+      })
+      .catch((error) => {
+        this.setResourceError(resource, error);
+        throw error;
+      });
+
+    const loadable = loadableLoading(finalPromise, prebuilt);
+    const lastLoaded = state.cache.state === "Error" ? state.cache.lastLoaded : state.cache.loaded;
+    state.cache = { state: "Loading", loadable, revalidate, lastLoaded };
+
+    return loadable;
+  };
+
+  private getResourceState<T>(resource: Resource<T>): ResourceState<T> {
+    let state = this.resourceStates.get(resource);
+    if (state == null) {
+      state = initResourceState();
+      this.resourceStates.set(resource, state);
+    }
+    return state;
+  }
+
+  private setResourceValue<T>(resource: Resource<T>, params: SetResourceValueParams<T>): void {
+    resource.setResult(params.value, { get: this.getValue, set: this.setValue }, this.context);
+    const state = this.getResourceState(resource);
+    state.cache = {
+      state: params.isTentative ? "Stale" : "Fresh",
+      loaded: loadableValue(params.value),
+    };
+    if (params.nextDependencies != null) {
+      state.dependencies = params.nextDependencies;
+    }
+    // TODO: call onResourceValueChange
+  }
+
+  private setResourceError<T>(resource: Resource<T>, error: unknown): void {
+    const state = this.getResourceState(resource);
+    if (state.cache.state === "Loading") {
+      state.cache = {
+        state: "Error",
+        result: loadableError(error),
+        lastLoaded: state.cache.lastLoaded,
+      };
+    } else {
+      throw new Error(`resource error is set when state is ${state.cache.state}: ${error}`);
+    }
+  }
+
+  private precomputeResourceCacheValidity<T>(state: ResourceState<T>): ResourceCacheState {
+    if (state.cache.state !== "MaybeStale") {
+      return state.cache.state;
+    }
+    const allFresh = state.dependencies.every((d) => {
+      if (d.key instanceof Resource) {
+        // If the dependency is a resource, check its dependencies recursively.
+        const st = this.getResourceState(d.key);
+        return this.precomputeResourceCacheValidity(st) === "Fresh";
+      } else {
+        return this.getValue(d.key) === (d as SyncCacheDependency<unknown>).lastValue;
+      }
+    });
+    state.cache = { state: allFresh ? "Fresh" : "Stale", loaded: state.cache.loaded };
+    return state.cache.state;
+  }
+
   private precomputeCacheValidity<T>(state: CachableState<T>): CacheValidity {
     // When the cache is marked as MaybeStale, check if any of its dependencies have been actually changed.
     // If so, the cache is Stale. Otherwise we can keep using the current cache so mark it as Fresh.
@@ -358,7 +571,7 @@ export class Store {
   }
 
   onInvalidate = <T>(
-    key: AnyGetKey<T>,
+    key: AnyGetKey<T> | Resource<T>,
     listener: EventListener<ValueInvalidationEvent<T>>,
   ): Unsubscribe => {
     if (key instanceof Block) {
@@ -367,6 +580,8 @@ export class Store {
       });
     } else if (key instanceof Loader) {
       return this.onLoaderCacheInvalidate(key, listener);
+    } else if (key instanceof Resource) {
+      return this.onResourceCacheInvalidate(key, listener);
     } else {
       return this.onSelectorCacheInvalidate(key, listener);
     }
@@ -410,6 +625,17 @@ export class Store {
     listener: EventListener<LoaderCacheInvalidateEvent<T>>,
   ): Unsubscribe => {
     const state = this.getLoaderState(loader);
+    state.invalidationListeners.push(listener);
+    return function unsubscribe() {
+      state.invalidationListeners = state.invalidationListeners.filter((f) => f !== listener);
+    };
+  };
+
+  onResourceCacheInvalidate = <T>(
+    resource: Resource<T>,
+    listener: EventListener<ValueInvalidationEvent<T>>,
+  ): Unsubscribe => {
+    const state = this.getResourceState(resource);
     state.invalidationListeners.push(listener);
     return function unsubscribe() {
       state.invalidationListeners = state.invalidationListeners.filter((f) => f !== listener);
