@@ -44,6 +44,29 @@ describe("Resource and Store", () => {
       expect({ values, nCalled }).toEqual({ values: [1, 1, 1], nCalled: 1 });
     });
 
+    it("can set value to other blocks", async () => {
+      const numValue = block({ default: () => 0 });
+      const minusValue = block({ default: () => 0 });
+      const squareValue = resource({
+        fetch: async (p) => {
+          const n = p.get(numValue);
+          return n * n;
+        },
+        setResult: (n, p) => {
+          p.set(minusValue, -n);
+        },
+      });
+
+      const store = createStore();
+      const blockValues = () => [store.getValue(numValue), store.getValue(minusValue)];
+      const resValue = await store.getResource(squareValue).promise();
+      expect([resValue, ...blockValues()]).toEqual([0, 0, -0]);
+
+      store.setValue(numValue, 5);
+      const resValue2 = await store.getResource(squareValue).promise();
+      expect([resValue2, ...blockValues()]).toEqual([25, 5, -25]);
+    });
+
     describe("when any of dependencies changed", () => {
       it("re-computes value (direct dependency changes)", async () => {
         const numValue = block({ default: () => 2 });
@@ -273,23 +296,28 @@ describe("Resource and Store", () => {
     describe("when resource can be prebuilt", () => {
       it("returns prebuilt value on first load", async () => {
         const numValue = block({ default: () => 5 });
+        const minusValue = block({ default: () => 0 });
         const squareValue = resource({
-          prebuild: () => 0,
+          prebuild: () => 3,
           fetch: async (p) => {
             const n = p.get(numValue);
             return n * n;
+          },
+          setResult: (n, p) => {
+            p.set(minusValue, -n);
           },
         });
         const store = createStore();
 
         const loadable = store.getResource(squareValue) as LoadableLoading<number>;
-        expect([loadable.state, loadable.prebuilt]).toEqual(["loading", 0]);
-        expect(await loadable.promise()).toEqual(25);
+        expect([loadable.state, loadable.prebuilt]).toEqual(["loading", 3]);
+        expect(store.getValue(minusValue)).toEqual(-3);
+        expect([await loadable.promise(), store.getValue(minusValue)]).toEqual([25, -25]);
 
         store.setValue(numValue, 8);
         const loadable2 = store.getResource(squareValue) as LoadableLoading<number>;
         expect([loadable2.state, loadable2.prebuilt]).toEqual(["loading", undefined]);
-        expect(await loadable2.promise()).toEqual(64);
+        expect([await loadable2.promise(), store.getValue(minusValue)]).toEqual([64, -64]);
       });
     });
   });
