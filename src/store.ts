@@ -10,6 +10,7 @@ import {
   LoadableError,
   loadableLoading,
   LoadableLoading,
+  LoadableResult,
   loadableValue,
   LoadableValue,
 } from "./loadable";
@@ -113,7 +114,12 @@ export interface ResourceState<T> {
   cache: ResourceCache<T>;
   dependencies: AnyResourceCacheDependency<any>[];
   invalidationListeners: EventListener<ValueInvalidationEvent<T>>[];
-  // deletionListeners, resourceResultChangeListeners
+  resourceResultChangeListeners: EventListener<ResourceResultChangeEvent<T>>[];
+  // deletionListeners
+}
+
+export interface ResourceResultChangeEvent<T> {
+  readonly result: LoadableResult<T>;
 }
 
 const initResourceState = <T>(): ResourceState<T> => {
@@ -121,6 +127,7 @@ const initResourceState = <T>(): ResourceState<T> => {
     cache: { state: "Stale", loaded: null },
     invalidationListeners: [],
     dependencies: [],
+    resourceResultChangeListeners: [],
   };
 };
 
@@ -495,6 +502,19 @@ export class Store {
     return loadable;
   };
 
+  onResourceResultChange = <T>(
+    resource: Resource<T>,
+    listener: EventListener<ResourceResultChangeEvent<T>>,
+  ): Unsubscribe => {
+    const state = this.getResourceState(resource);
+    state.resourceResultChangeListeners.push(listener);
+    return function unsubscribe() {
+      state.resourceResultChangeListeners = state.resourceResultChangeListeners.filter((f) => {
+        return f !== listener;
+      });
+    };
+  };
+
   private getResourceState<T>(resource: Resource<T>): ResourceState<T> {
     let state = this.resourceStates.get(resource);
     if (state == null) {
@@ -507,24 +527,27 @@ export class Store {
   private setResourceValue<T>(resource: Resource<T>, params: SetResourceValueParams<T>): void {
     resource.setResult(params.value, { get: this.getValue, set: this.setValue }, this.context);
     const state = this.getResourceState(resource);
+    const result = loadableValue(params.value);
     state.cache = {
       state: params.isTentative ? "Stale" : "Fresh",
-      loaded: loadableValue(params.value),
+      loaded: result,
     };
     if (params.nextDependencies != null) {
       state.dependencies = params.nextDependencies;
     }
-    // TODO: call onResourceValueChange
+    state.resourceResultChangeListeners.forEach((f) => f({ result }));
   }
 
   private setResourceError<T>(resource: Resource<T>, error: unknown): void {
     const state = this.getResourceState(resource);
     if (state.cache.state === "Loading") {
+      const result = loadableError<T>(error);
       state.cache = {
         state: "Error",
-        result: loadableError(error),
+        result,
         lastLoaded: state.cache.lastLoaded,
       };
+      state.resourceResultChangeListeners.forEach((f) => f({ result }));
     } else {
       throw new Error(`resource error is set when state is ${state.cache.state}: ${error}`);
     }

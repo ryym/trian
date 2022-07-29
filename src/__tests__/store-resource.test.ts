@@ -294,6 +294,70 @@ describe("Resource and Store", () => {
     });
   });
 
+  describe("store.onResourceResultChange", () => {
+    it("fires event when loaded resource result is set", async () => {
+      let shouldFail = false;
+      const numValue = block({ default: () => 5 });
+      const squareValue = resource({
+        fetch: async (p) => {
+          if (shouldFail) {
+            throw "fake-error";
+          }
+          const n = p.get(numValue);
+          return n * n;
+        },
+      });
+
+      const store = createStore();
+
+      let phase = "initial";
+
+      // Store event snapshots on resource result change.
+      const events: unknown[] = [];
+      store.onResourceResultChange(squareValue, (event) => {
+        let result: unknown[];
+        switch (event.result.state) {
+          case "hasValue":
+            result = [event.result.state, event.result.value];
+            break;
+          case "hasError":
+            result = [event.result.state, event.result.error];
+        }
+        const gotResult = store.getResource(squareValue, { keepError: true });
+        events.push({ phase, result, same: event.result === gotResult });
+      });
+
+      phase = "first-load";
+      await store.getResource(squareValue).promise();
+
+      phase = "cache-load";
+      await store.getResource(squareValue).promise();
+
+      phase = "success-load-after-invalidate";
+      store.setValue(numValue, 6);
+      await store.getResource(squareValue).promise();
+
+      phase = "failure-load-after-invalidate";
+      store.setValue(numValue, 7);
+      shouldFail = true;
+      await store
+        .getResource(squareValue)
+        .promise()
+        .catch(() => {});
+
+      phase = "success-load-after-failure";
+      shouldFail = false;
+      await store.getResource(squareValue).promise();
+
+      expect(events).toEqual([
+        { phase: "first-load", result: ["hasValue", 25], same: true },
+        { phase: "success-load-after-invalidate", result: ["hasValue", 36], same: true },
+        { phase: "failure-load-after-invalidate", result: ["hasError", "fake-error"], same: true },
+        { phase: "success-load-after-failure", result: ["hasValue", 49], same: true },
+      ]);
+    });
+  });
+
   describe("[regression] avoid unnecessary double computation", () => {
     it("reuse the current computation correctly", async () => {
       const numValue = block({
