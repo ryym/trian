@@ -59,7 +59,7 @@
     "webpack-dev-server": "^4.7.4"
   },
   "lint-staged": {
-    "*.{js,ts,tsx}": [
+    "*.{js,ts}": [
       "eslint --fix --max-warnings 0",
       "prettier --write"
     ]
