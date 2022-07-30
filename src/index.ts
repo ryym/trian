@@ -2,6 +2,7 @@ export * from "./block";
 export * from "./blockFamily";
 export * from "./context";
 export * from "./dispatch";
+export * from "./resource";
 export * from "./selector";
 export * from "./selectorFamily";
 export * from "./store";

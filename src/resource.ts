@@ -9,9 +9,9 @@ export interface ResourceConfig<V> {
   readonly setResult?: (value: V, p: ResourceSetResultParams, ctx: Context) => void;
 }
 
-export type Get = <T>(gettable: Block<T> | Selector<T>) => T;
-export type Fetch = <T>(fetchable: Resource<T>) => Promise<T>;
-export type Set = <T>(block: Block<T>, next: T | ((cur: T) => T)) => void;
+type Get = <T>(gettable: Block<T> | Selector<T>) => T;
+type Fetch = <T>(fetchable: Resource<T>) => Promise<T>;
+type Set = <T>(block: Block<T>, next: T | ((cur: T) => T)) => void;
 
 export interface ResourceFetchParams {
   readonly get: Get;
