@@ -1,15 +1,15 @@
 import * as React from "react";
-import { render } from "react-dom";
+import { createRoot } from "react-dom/client";
 import {
   createStore,
   createDispatch,
   block,
   selector,
-  loader,
+  resource,
   Thunk,
   createContextKey,
 } from "../..";
-import { TrianProvider, useValue, useAsyncValue, useDispatch } from "../../react";
+import { TrianProvider, useValue, useResourceValue, useDispatch } from "../../react";
 
 const { useEffect, useState } = React;
 
@@ -130,26 +130,26 @@ store.context.set(RouteContextKey, cleanHash(document.location.hash));
 
 const customDispatch = createDispatch(store);
 
-const AsyncCount = loader({
-  get: ({ get }) =>
-    new Promise<number>((resolve) => {
+const AsyncCount = resource({
+  fetch: ({ get }) => {
+    console.log("compute async count");
+    return new Promise<number>((resolve, reject) => {
       setTimeout(() => {
         let count = get(Count);
+        if (count === 5) {
+          reject("test-error");
+        }
         resolve(count * 2);
       }, 1000);
-    }),
+    });
+  },
 });
 
 function UseAsync({ id }: any) {
-  const result = useAsyncValue(AsyncCount);
-  console.log("render", id, result);
-  if (result.status === "Error") {
-    console.error(result.error);
-  }
+  const result = useResourceValue(AsyncCount);
   return (
     <div>
-      <h1>Async</h1>
-      <p>{JSON.stringify(result)}</p>
+      <h1>Async: {result}</h1>
     </div>
   );
 }
@@ -167,11 +167,16 @@ function UseAsyncWrapper() {
 function App() {
   return (
     <TrianProvider store={store} dispatch={customDispatch}>
-      <UseAsync id="use-async1" />
-      <UseAsyncWrapper />
+      <React.Suspense fallback={<div>async1-fallback</div>}>
+        <UseAsync id="use-async1" />
+      </React.Suspense>
+      <React.Suspense fallback={<div>async2-fallback</div>}>
+        <UseAsyncWrapper />
+      </React.Suspense>
       <Routes />
     </TrianProvider>
   );
 }
 
-render(<App />, document.getElementById("root"));
+const container = document.getElementById("root");
+createRoot(container!).render(<App />);
