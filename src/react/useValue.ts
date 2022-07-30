@@ -5,6 +5,7 @@ import { Selector } from "../selector";
 
 export const useValue = <T>(key: Block<T> | Selector<T>): T => {
   const { store } = useTrianContext();
+  const getSnapshot = useCallback(() => store.getValue(key), [store, key]);
   return useSyncExternalStore(
     useCallback(
       (callback) => {
@@ -12,6 +13,7 @@ export const useValue = <T>(key: Block<T> | Selector<T>): T => {
       },
       [store, key],
     ),
-    useCallback(() => store.getValue(key), [store, key]),
+    getSnapshot,
+    getSnapshot,
   );
 };
