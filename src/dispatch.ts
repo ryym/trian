@@ -1,6 +1,4 @@
-import { Store, UpdateValue } from "./store";
-import { Block } from "./block";
-import { AnyGet, AnyGetKey } from "./loader";
+import { Store } from "./store";
 import { Context } from "./context";
 
 export const createDispatch = (store: Store): Dispatch => {
@@ -10,6 +8,8 @@ export const createDispatch = (store: Store): Dispatch => {
 
   const params: ThunkParams = {
     get: store.getAnyValue,
+    fetch: store.getResource,
+    refetch: store.refetchResource,
     set: store.setValue,
     delete: store.delete,
     dispatch,
@@ -18,21 +18,17 @@ export const createDispatch = (store: Store): Dispatch => {
   return dispatch;
 };
 
-export interface Dispatch {
-  <As extends unknown[], R>(action: Action<As, R>, ...args: As): R;
-}
-
-export interface Action<Args extends unknown[], Result> {
-  (...args: Args): Thunk<Result>;
-}
-
 export interface ThunkParams {
-  get: AnyGet;
-  set<T>(block: Block<T>, next: T | UpdateValue<T>): void;
-  delete(key: AnyGetKey<any>): boolean;
-  dispatch<As extends unknown[], R>(action: Action<As, R>, ...args: As): R;
+  readonly get: Store["getAnyValue"];
+  readonly fetch: Store["getResource"];
+  readonly refetch: Store["refetchResource"];
+  readonly set: Store["setValue"];
+  readonly delete: Store["delete"];
+  readonly dispatch: Dispatch;
 }
 
-export interface Thunk<Result = void> {
-  (params: ThunkParams, context: Context): Result;
-}
+export type Dispatch = <As extends unknown[], R>(action: Action<As, R>, ...args: As) => R;
+
+export type Action<Args extends unknown[], Result> = (...args: Args) => Thunk<Result>;
+
+export type Thunk<Result = void> = (params: ThunkParams, context: Context) => Result;

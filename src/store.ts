@@ -174,6 +174,10 @@ interface SetResourceValueParams<T> {
   readonly nextDependencies: AnyResourceCacheDependency<any>[] | null;
 }
 
+export interface RefetchResourceParams<T> {
+  readonly preupdate?: (value: T) => T;
+}
+
 export class ActiveValueDeletionError extends Error {
   constructor(valueType: "block" | "selector" | "loader", listenerCount: number) {
     super(`cannot delete subscribed ${valueType} (${listenerCount} listeners exist)`);
@@ -550,6 +554,32 @@ export class Store {
       throw new Error(`resource error is set when state is ${state.cache.state}: ${error}`);
     }
   }
+
+  refetchResource = async <T>(
+    resource: Resource<T>,
+    params: RefetchResourceParams<T>,
+  ): Promise<T> => {
+    const state = this.getResourceState(resource);
+
+    if (state.cache.state === "Loading") {
+      return state.cache.loadable.promise();
+    }
+
+    const latestValue = this.getCurrentResource(resource)?.latestValue;
+    const last = latestValue == null ? null : { value: latestValue };
+    state.invalidationListeners.forEach((f) => f({ last }));
+
+    if (latestValue != null && params.preupdate != null) {
+      const preupdated = params.preupdate(latestValue);
+      this.setResourceValue(resource, {
+        value: preupdated,
+        isTentative: true,
+        nextDependencies: null,
+      });
+    }
+
+    return this.getResource(resource).promise();
+  };
 
   getCurrentResource = <T>(resource: Resource<T>): Loadable<T> | null => {
     return this.getResourceState(resource).cache.loadable;
