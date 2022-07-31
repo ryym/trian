@@ -410,10 +410,6 @@ export class Store {
     return state;
   }
 
-  getResourceValue = <T>(resource: Resource<T>): Promise<T> => {
-    return this.getResource(resource).promise();
-  };
-
   getResource = <T>(resource: Resource<T>): Loadable<T> => {
     const state = this.getResourceState(resource);
 
@@ -474,7 +470,7 @@ export class Store {
         fetch: (key) => {
           const unsubscribe = this.onInvalidate(key, invalidateCache);
           nextDependencies.push({ key, unsubscribe });
-          return this.getResourceValue(key);
+          return this.getResource(key).promise();
         },
       };
       const value = await resource.fetch(fetchParams, this.context);

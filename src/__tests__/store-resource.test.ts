@@ -6,26 +6,6 @@ import { createStore } from "../store";
 import { Pauser } from "./lib/pauser";
 
 describe("Resource and Store", () => {
-  describe("store.getResourceValue", () => {
-    it("returns resource value", async () => {
-      const numValue = resource({
-        fetch: () => Promise.resolve(1),
-      });
-      const store = createStore();
-      const value = await store.getResourceValue(numValue);
-      expect(value).toEqual(1);
-    });
-
-    it("throws on error", async () => {
-      const numValue = resource({
-        fetch: () => Promise.reject("failed"),
-      });
-      const store = createStore();
-      const value = await store.getResourceValue(numValue).catch((err) => err);
-      expect(value).toEqual("failed");
-    });
-  });
-
   describe("store.getResource", () => {
     it("computes and caches value", async () => {
       let nCalled = 0;
@@ -387,14 +367,14 @@ describe("Resource and Store", () => {
 
       const store = createStore();
 
-      const value = await store.getResourceValue(numResource);
+      const value = await store.getResource(numResource).promise();
       expect([value, loadCount]).toEqual([10, 1]);
 
       return new Promise<void>((resolve) => {
         // Recompute the resource result immediately on its invalidation.
         store.onInvalidate(numResource, async () => {
           try {
-            const value = await store.getResourceValue(numResource);
+            const value = await store.getResource(numResource).promise();
             expect([value, loadCount]).toEqual([20, 2]);
           } finally {
             resolve();
