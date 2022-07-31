@@ -17,9 +17,9 @@ describe("Resource and Store", () => {
       const store = createStore();
 
       const values = [
-        await store.getResource(numValue).promise(),
-        await store.getResource(numValue).promise(),
-        await store.getResource(numValue).promise(),
+        await store.fetchResource(numValue).promise(),
+        await store.fetchResource(numValue).promise(),
+        await store.fetchResource(numValue).promise(),
       ];
       expect({ values, nCalled }).toEqual({ values: [1, 1, 1], nCalled: 1 });
     });
@@ -39,11 +39,11 @@ describe("Resource and Store", () => {
 
       const store = createStore();
       const blockValues = () => [store.getValue(numValue), store.getValue(minusValue)];
-      const resValue = await store.getResource(squareValue).promise();
+      const resValue = await store.fetchResource(squareValue).promise();
       expect([resValue, ...blockValues()]).toEqual([0, 0, -0]);
 
       store.setValue(numValue, 5);
-      const resValue2 = await store.getResource(squareValue).promise();
+      const resValue2 = await store.fetchResource(squareValue).promise();
       expect([resValue2, ...blockValues()]).toEqual([25, 5, -25]);
     });
 
@@ -60,11 +60,11 @@ describe("Resource and Store", () => {
 
         const store = createStore();
         const values: number[] = [];
-        values.push(await store.getResource(squareValue).promise());
-        values.push(await store.getResource(squareValue).promise());
+        values.push(await store.fetchResource(squareValue).promise());
+        values.push(await store.fetchResource(squareValue).promise());
         store.setValue(numValue, 7);
-        values.push(await store.getResource(squareValue).promise());
-        values.push(await store.getResource(squareValue).promise());
+        values.push(await store.fetchResource(squareValue).promise());
+        values.push(await store.fetchResource(squareValue).promise());
 
         expect({ values, nCalled }).toEqual({ values: [4, 4, 49, 49], nCalled: 2 });
       });
@@ -85,11 +85,11 @@ describe("Resource and Store", () => {
 
         const store = createStore();
         const values: number[] = [];
-        values.push(await store.getResource(minusValue).promise());
-        values.push(await store.getResource(minusValue).promise());
+        values.push(await store.fetchResource(minusValue).promise());
+        values.push(await store.fetchResource(minusValue).promise());
         store.setValue(numValue, 9);
-        values.push(await store.getResource(minusValue).promise());
-        values.push(await store.getResource(minusValue).promise());
+        values.push(await store.fetchResource(minusValue).promise());
+        values.push(await store.fetchResource(minusValue).promise());
 
         expect({ values, nCalled }).toEqual({ values: [-4, -4, -81, -81], nCalled: 2 });
       });
@@ -103,9 +103,9 @@ describe("Resource and Store", () => {
 
         const store = createStore();
         const values: number[][] = [];
-        values.push(await store.getResource(minusNum).promise());
+        values.push(await store.fetchResource(minusNum).promise());
         store.setValue(nums, [3, 7, 8]); // firstNum stays same.
-        values.push(await store.getResource(minusNum).promise());
+        values.push(await store.fetchResource(minusNum).promise());
         expect(values).toEqual([[-6], [-6]]);
         expect(values[0]).toBe(values[1]); // the final value keeps referencial equality.
       });
@@ -122,9 +122,9 @@ describe("Resource and Store", () => {
 
         const store = createStore();
         const values: number[][] = [];
-        values.push(await store.getResource(minusNum).promise());
+        values.push(await store.fetchResource(minusNum).promise());
         store.setValue(nums, [3, 7, 8]); // firstNum stays same.
-        values.push(await store.getResource(minusNum).promise());
+        values.push(await store.fetchResource(minusNum).promise());
         expect(values).toEqual([[-6], [-6]]);
         expect(values[0]).toBe(values[1]); // the final value keeps referencial equality.
       });
@@ -147,7 +147,7 @@ describe("Resource and Store", () => {
 
         // It resolves to the value 9*9 even if the block is changed after
         // the resource computation starts.
-        const squarePromise1 = store.getResource(squareValue).promise();
+        const squarePromise1 = store.fetchResource(squareValue).promise();
         store.setValue(numValue, 9);
         pauser.resume();
         expect(await squarePromise1).toEqual(81);
@@ -169,7 +169,7 @@ describe("Resource and Store", () => {
 
         // The first call that depends on numValue:4 never finishes
         // since we does not resume the pauser. But the promise resolves with no problem.
-        const squarePromise1 = store.getResource(squareValue).promise();
+        const squarePromise1 = store.fetchResource(squareValue).promise();
         store.setValue(numValue, 9);
         expect(await squarePromise1).toEqual(81);
       });
@@ -192,8 +192,8 @@ describe("Resource and Store", () => {
           const store = createStore();
 
           const squarePromises = [
-            store.getResource(squareValue).promise(),
-            store.getResource(squareValue).promise(),
+            store.fetchResource(squareValue).promise(),
+            store.fetchResource(squareValue).promise(),
           ];
           pauser.resume();
           const values = await Promise.all(squarePromises);
@@ -220,12 +220,12 @@ describe("Resource and Store", () => {
           const store = createStore();
 
           const promises: Promise<unknown>[] = [];
-          promises.push(store.getResource(squareValue).promise());
-          promises.push(store.getResource(squareValue).promise());
+          promises.push(store.fetchResource(squareValue).promise());
+          promises.push(store.fetchResource(squareValue).promise());
           store.setValue(numValue, 9);
           pauser.resume();
-          promises.push(store.getResource(squareValue).promise());
-          promises.push(store.getResource(squareValue).promise());
+          promises.push(store.fetchResource(squareValue).promise());
+          promises.push(store.fetchResource(squareValue).promise());
 
           const values = await Promise.all(promises);
           expect({ values, nCalled }).toEqual({
@@ -249,10 +249,10 @@ describe("Resource and Store", () => {
         });
         const store = createStore();
 
-        const firstResult = store.getResource(numValue);
+        const firstResult = store.fetchResource(numValue);
         const err = await firstResult.promise().catch((err) => err);
         shouldThrow = false;
-        const value = await store.getResource(numValue).promise();
+        const value = await store.fetchResource(numValue).promise();
         expect([err, value]).toEqual(["fake-error", 10]);
       });
     });
@@ -273,13 +273,13 @@ describe("Resource and Store", () => {
         });
         const store = createStore();
 
-        const loadable = store.getResource(squareValue) as LoadableLoading<number>;
+        const loadable = store.fetchResource(squareValue) as LoadableLoading<number>;
         expect([loadable.state, loadable.latestValue]).toEqual(["loading", 9]);
         expect(store.getValue(minusValue)).toEqual(-9);
         expect([await loadable.promise(), store.getValue(minusValue)]).toEqual([25, -25]);
 
         store.setValue(numValue, 8);
-        const loadable2 = store.getResource(squareValue) as LoadableLoading<number>;
+        const loadable2 = store.fetchResource(squareValue) as LoadableLoading<number>;
         expect([loadable2.state, loadable2.latestValue]).toEqual(["loading", 25]);
         expect([await loadable2.promise(), store.getValue(minusValue)]).toEqual([64, -64]);
       });
@@ -320,26 +320,26 @@ describe("Resource and Store", () => {
       });
 
       phase = "first-load";
-      await store.getResource(squareValue).promise();
+      await store.fetchResource(squareValue).promise();
 
       phase = "cache-load";
-      await store.getResource(squareValue).promise();
+      await store.fetchResource(squareValue).promise();
 
       phase = "success-load-after-invalidate";
       store.setValue(numValue, 6);
-      await store.getResource(squareValue).promise();
+      await store.fetchResource(squareValue).promise();
 
       phase = "failure-load-after-invalidate";
       store.setValue(numValue, 7);
       shouldFail = true;
       await store
-        .getResource(squareValue)
+        .fetchResource(squareValue)
         .promise()
         .catch(() => {});
 
       phase = "success-load-after-failure";
       shouldFail = false;
-      await store.getResource(squareValue).promise();
+      await store.fetchResource(squareValue).promise();
 
       expect(events).toEqual([
         { phase: "first-load", result: ["hasValue", 25], same: true },
@@ -367,14 +367,14 @@ describe("Resource and Store", () => {
 
       const store = createStore();
 
-      const value = await store.getResource(numResource).promise();
+      const value = await store.fetchResource(numResource).promise();
       expect([value, loadCount]).toEqual([10, 1]);
 
       return new Promise<void>((resolve) => {
         // Recompute the resource result immediately on its invalidation.
         store.onInvalidate(numResource, async () => {
           try {
-            const value = await store.getResource(numResource).promise();
+            const value = await store.fetchResource(numResource).promise();
             expect([value, loadCount]).toEqual([20, 2]);
           } finally {
             resolve();

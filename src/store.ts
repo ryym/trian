@@ -410,7 +410,7 @@ export class Store {
     return state;
   }
 
-  getResource = <T>(resource: Resource<T>): Loadable<T> => {
+  fetchResource = <T>(resource: Resource<T>): Loadable<T> => {
     const state = this.getResourceState(resource);
 
     if (state.cache.state === "Loading") {
@@ -470,7 +470,7 @@ export class Store {
         fetch: (key) => {
           const unsubscribe = this.onInvalidate(key, invalidateCache);
           nextDependencies.push({ key, unsubscribe });
-          return this.getResource(key).promise();
+          return this.fetchResource(key).promise();
         },
       };
       const value = await resource.fetch(fetchParams, this.context);
@@ -566,7 +566,7 @@ export class Store {
       });
     }
 
-    return this.getResource(resource).promise();
+    return this.fetchResource(resource).promise();
   };
 
   getCurrentResource = <T>(resource: Resource<T>): Loadable<T> | null => {

@@ -7,7 +7,7 @@ export const useResource = <T>(resource: Resource<T>): Loadable<T> => {
   const { store } = useTrianContext();
   const getSnapshot = useCallback(() => {
     const loadable = store.getCurrentResource(resource);
-    return loadable || store.getResource(resource);
+    return loadable || store.fetchResource(resource);
   }, [store, resource]);
   const loadable = useSyncExternalStore(
     useCallback(
@@ -22,7 +22,7 @@ export const useResource = <T>(resource: Resource<T>): Loadable<T> => {
 
   useEffect(() => {
     const unsubscribe = store.onInvalidate(resource, () => {
-      store.getResource(resource);
+      store.fetchResource(resource);
     });
     return unsubscribe;
   }, [store, resource]);
