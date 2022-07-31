@@ -257,7 +257,7 @@ describe("Resource and Store", () => {
     });
 
     describe("when computation failed", () => {
-      it("reruns computation next time by default", async () => {
+      it("reruns computation on next call", async () => {
         let shouldThrow = true;
         const numValue = resource({
           fetch: async () => {
@@ -274,22 +274,6 @@ describe("Resource and Store", () => {
         shouldThrow = false;
         const value = await store.getResource(numValue).promise();
         expect([err, value]).toEqual(["fake-error", 10]);
-      });
-
-      it("keeps returning last error result if desired", async () => {
-        const numValue = resource({
-          fetch: async () => {
-            throw "fake-error";
-          },
-        });
-        const store = createStore();
-
-        const result1 = store.getResource(numValue);
-        const err = await result1.promise().catch((err) => err);
-        const result2 = store.getResource(numValue, { keepError: true });
-        const result3 = store.getResource(numValue, { keepError: true });
-        expect([err, result2.state]).toEqual(["fake-error", "hasError"]);
-        expect(result2).toBe(result3);
       });
     });
 
@@ -351,7 +335,7 @@ describe("Resource and Store", () => {
           case "hasError":
             result = [event.result.state, event.result.error];
         }
-        const gotResult = store.getResource(squareValue, { keepError: true });
+        const gotResult = store.getCurrentResource(squareValue);
         events.push({ phase, result, same: event.result === gotResult });
       });
 

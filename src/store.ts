@@ -163,11 +163,6 @@ export interface ResourceCacheDependency<T> {
   readonly unsubscribe: Unsubscribe;
 }
 
-export interface GetResourceParams {
-  // If true, skip fetching resource when the last state is error.
-  keepError?: boolean;
-}
-
 interface SetResourceValueParams<T> {
   readonly value: T;
   readonly isTentative?: boolean;
@@ -419,13 +414,10 @@ export class Store {
     return this.getResource(resource).promise();
   };
 
-  getResource = <T>(resource: Resource<T>, params: GetResourceParams = {}): Loadable<T> => {
+  getResource = <T>(resource: Resource<T>): Loadable<T> => {
     const state = this.getResourceState(resource);
 
     if (state.cache.state === "Loading") {
-      return state.cache.loadable;
-    }
-    if (state.cache.state === "Error" && params.keepError) {
       return state.cache.loadable;
     }
 
