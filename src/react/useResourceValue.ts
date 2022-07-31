@@ -9,10 +9,10 @@ export const useResourceValue = <T>(resource: Resource<T>): T => {
     case "hasValue":
       return loadable.value;
     case "loading":
-      if (loadable.prebuilt == null) {
+      if (loadable.latestValue === undefined) {
         throw loadable.promise();
       } else {
-        return loadable.prebuilt;
+        return loadable.latestValue;
       }
   }
 };

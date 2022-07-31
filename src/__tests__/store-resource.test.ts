@@ -294,11 +294,11 @@ describe("Resource and Store", () => {
     });
 
     describe("when resource can be prebuilt", () => {
-      it("returns prebuilt value on first load", async () => {
+      it("returns prebuilt value as latest on first load", async () => {
         const numValue = block({ default: () => 5 });
         const minusValue = block({ default: () => 0 });
         const squareValue = resource({
-          prebuild: () => 3,
+          prebuild: () => 9,
           fetch: async (p) => {
             const n = p.get(numValue);
             return n * n;
@@ -310,13 +310,13 @@ describe("Resource and Store", () => {
         const store = createStore();
 
         const loadable = store.getResource(squareValue) as LoadableLoading<number>;
-        expect([loadable.state, loadable.prebuilt]).toEqual(["loading", 3]);
-        expect(store.getValue(minusValue)).toEqual(-3);
+        expect([loadable.state, loadable.latestValue]).toEqual(["loading", 9]);
+        expect(store.getValue(minusValue)).toEqual(-9);
         expect([await loadable.promise(), store.getValue(minusValue)]).toEqual([25, -25]);
 
         store.setValue(numValue, 8);
         const loadable2 = store.getResource(squareValue) as LoadableLoading<number>;
-        expect([loadable2.state, loadable2.prebuilt]).toEqual(["loading", undefined]);
+        expect([loadable2.state, loadable2.latestValue]).toEqual(["loading", 25]);
         expect([await loadable2.promise(), store.getValue(minusValue)]).toEqual([64, -64]);
       });
     });

@@ -124,7 +124,7 @@ export interface ResourceResultChangeEvent<T> {
 
 const initResourceState = <T>(): ResourceState<T> => {
   return {
-    cache: { state: "Stale", loaded: null },
+    cache: { state: "Stale", loadable: null },
     invalidationListeners: [],
     dependencies: [],
     resourceResultChangeListeners: [],
@@ -136,26 +136,24 @@ export type AnyResourceCacheDependency<T> = SyncCacheDependency<T> | ResourceCac
 export type ResourceCache<T> =
   | {
       readonly state: "Stale";
-      readonly loaded: null | LoadableValue<T>;
+      readonly loadable: null | LoadableValue<T>;
     }
   | {
       readonly state: "MaybeStale";
-      readonly loaded: LoadableValue<T>;
+      readonly loadable: LoadableValue<T>;
     }
   | {
       readonly state: "Fresh";
-      readonly loaded: LoadableValue<T>;
+      readonly loadable: LoadableValue<T>;
     }
   | {
       readonly state: "Loading";
       readonly loadable: LoadableLoading<T>;
-      readonly lastLoaded: null | LoadableValue<T>;
       readonly revalidate: () => void;
     }
   | {
       readonly state: "Error";
-      readonly result: LoadableError<T>;
-      readonly lastLoaded: null | LoadableValue<T>;
+      readonly loadable: LoadableError<T>;
     };
 
 export type ResourceCacheState = ResourceCache<unknown>["state"];
@@ -424,24 +422,26 @@ export class Store {
       return state.cache.loadable;
     }
     if (state.cache.state === "Error" && params.keepError) {
-      return state.cache.result;
+      return state.cache.loadable;
     }
 
     this.precomputeResourceCacheValidity(state);
     if (state.cache.state === "Fresh") {
-      return state.cache.loaded;
+      return state.cache.loadable;
     }
 
-    let prebuilt: T | undefined = undefined;
-    if (state.cache.state === "Stale" && state.cache.loaded == null) {
-      prebuilt = resource.prebuild({ get: this.getValue }, this.context);
-      if (prebuilt != null) {
+    let latestValue: T | undefined = undefined;
+    if (state.cache.loadable == null) {
+      latestValue = resource.prebuild({ get: this.getValue }, this.context);
+      if (latestValue != null) {
         this.setResourceValue(resource, {
-          value: prebuilt,
+          value: latestValue,
           isTentative: true,
           nextDependencies: null,
         });
       }
+    } else {
+      latestValue = state.cache.loadable.latestValue;
     }
 
     state.dependencies.forEach((d) => d.unsubscribe());
@@ -453,8 +453,8 @@ export class Store {
           break;
         }
         case "Fresh": {
-          const last = { value: state.cache.loaded.value };
-          state.cache = { state: "MaybeStale", loaded: state.cache.loaded };
+          const last = { value: state.cache.loadable.value };
+          state.cache = { state: "MaybeStale", loadable: state.cache.loadable };
           state.invalidationListeners.forEach((f) => f({ last }));
           break;
         }
@@ -495,9 +495,8 @@ export class Store {
         throw error;
       });
 
-    const loadable = loadableLoading(finalPromise, prebuilt);
-    const lastLoaded = state.cache.state === "Error" ? state.cache.lastLoaded : state.cache.loaded;
-    state.cache = { state: "Loading", loadable, revalidate, lastLoaded };
+    const loadable = loadableLoading(finalPromise, latestValue);
+    state.cache = { state: "Loading", loadable, revalidate };
 
     return loadable;
   };
@@ -527,31 +526,34 @@ export class Store {
   private setResourceValue<T>(resource: Resource<T>, params: SetResourceValueParams<T>): void {
     resource.setResult(params.value, { get: this.getValue, set: this.setValue }, this.context);
     const state = this.getResourceState(resource);
-    const result = loadableValue(params.value);
+    const loadable = loadableValue(params.value);
     state.cache = {
       state: params.isTentative ? "Stale" : "Fresh",
-      loaded: result,
+      loadable,
     };
     if (params.nextDependencies != null) {
       state.dependencies = params.nextDependencies;
     }
-    state.resourceResultChangeListeners.forEach((f) => f({ result }));
+    state.resourceResultChangeListeners.forEach((f) => f({ result: loadable }));
   }
 
   private setResourceError<T>(resource: Resource<T>, error: unknown): void {
     const state = this.getResourceState(resource);
     if (state.cache.state === "Loading") {
-      const result = loadableError<T>(error);
+      const loadable = loadableError<T>(error, state.cache.loadable.latestValue);
       state.cache = {
         state: "Error",
-        result,
-        lastLoaded: state.cache.lastLoaded,
+        loadable,
       };
-      state.resourceResultChangeListeners.forEach((f) => f({ result }));
+      state.resourceResultChangeListeners.forEach((f) => f({ result: loadable }));
     } else {
       throw new Error(`resource error is set when state is ${state.cache.state}: ${error}`);
     }
   }
+
+  getCurrentResource = <T>(resource: Resource<T>): Loadable<T> | null => {
+    return this.getResourceState(resource).cache.loadable;
+  };
 
   private precomputeResourceCacheValidity<T>(state: ResourceState<T>): ResourceCacheState {
     if (state.cache.state !== "MaybeStale") {
@@ -566,7 +568,7 @@ export class Store {
         return this.getValue(d.key) === (d as SyncCacheDependency<unknown>).lastValue;
       }
     });
-    state.cache = { state: allFresh ? "Fresh" : "Stale", loaded: state.cache.loaded };
+    state.cache = { state: allFresh ? "Fresh" : "Stale", loadable: state.cache.loadable };
     return state.cache.state;
   }
 
