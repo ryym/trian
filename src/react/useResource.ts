@@ -5,10 +5,11 @@ import { Loadable } from "../loadable";
 
 export const useResource = <T>(resource: Resource<T>): Loadable<T> => {
   const { store } = useTrianContext();
+
   const getSnapshot = useCallback(() => {
-    const loadable = store.getCurrentResource(resource);
-    return loadable || store.fetchResource(resource);
+    return store.getCurrentResource(resource) || store.fetchResource(resource);
   }, [store, resource]);
+
   const loadable = useSyncExternalStore(
     useCallback(
       (callback) => {
