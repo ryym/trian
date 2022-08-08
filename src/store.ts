@@ -553,6 +553,10 @@ export class Store {
       return state.cache.loadable.promise();
     }
 
+    if (state.cache.state === "Fresh" || state.cache.state === "MaybeStale") {
+      state.cache = { state: "Stale", loadable: state.cache.loadable };
+    }
+
     const latestValue = this.getCurrentResource(resource)?.latestValue;
     const last = latestValue == null ? null : { value: latestValue };
     state.invalidationListeners.forEach((f) => f({ last }));
