@@ -1,5 +1,4 @@
 import { block } from "../block";
-import { LoadableLoading } from "../loadable";
 import { resource } from "../resource";
 import { selector } from "../selector";
 import { createStore } from "../store";
@@ -273,15 +272,51 @@ describe("Resource and Store", () => {
         });
         const store = createStore();
 
-        const loadable = store.fetchResource(squareValue) as LoadableLoading<number>;
+        const loadable = store.fetchResource(squareValue);
         expect([loadable.state, loadable.latestValue]).toEqual(["loading", 9]);
         expect(store.getValue(minusValue)).toEqual(-9);
         expect([await loadable.promise(), store.getValue(minusValue)]).toEqual([25, -25]);
 
         store.setValue(numValue, 8);
-        const loadable2 = store.fetchResource(squareValue) as LoadableLoading<number>;
+        const loadable2 = store.fetchResource(squareValue);
         expect([loadable2.state, loadable2.latestValue]).toEqual(["loading", 25]);
         expect([await loadable2.promise(), store.getValue(minusValue)]).toEqual([64, -64]);
+      });
+
+      it("skips fetching if desired", async () => {
+        const numValue = block({ default: () => 5 });
+        const minusValue = block({ default: () => 0 });
+        const squareValue = resource({
+          prebuild: () => ({ value: 9, skipFetch: true }),
+          fetch: async (p) => {
+            const n = p.get(numValue);
+            return n * n;
+          },
+          setResult: (n, p) => {
+            p.set(minusValue, -n);
+          },
+        });
+        const store = createStore();
+
+        const loadable = store.fetchResource(squareValue);
+        expect([loadable.state, loadable.latestValue]).toEqual(["hasValue", 9]);
+        expect(store.getValue(minusValue)).toEqual(-9);
+
+        // The resource is never invalidated since the store doesn't know its dependencies.
+        store.setValue(numValue, 8);
+        const loadable2 = store.fetchResource(squareValue);
+        expect([loadable2.state, loadable2.latestValue]).toEqual(["hasValue", 9]);
+        expect(store.getValue(minusValue)).toEqual(-9);
+
+        // But we can force to fetch the resource.
+        const n = await store.refetchResource(squareValue, {});
+        expect([n, store.getValue(minusValue)]).toEqual([64, -64]);
+
+        // And the resource will be invalidated after that.
+        store.setValue(numValue, 9);
+        const loadable3 = store.fetchResource(squareValue);
+        expect([loadable3.state, loadable3.latestValue]).toEqual(["loading", 64]);
+        expect([await loadable3.promise(), store.getValue(minusValue)]).toEqual([81, -81]);
       });
     });
   });

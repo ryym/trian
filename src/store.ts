@@ -425,13 +425,16 @@ export class Store {
     let latestValue: T | undefined = undefined;
     if (state.cache.loadable == null) {
       const prebuilt = resource.prebuild({ get: this.getValue }, this.context);
-      latestValue = prebuilt?.value;
-      if (latestValue != null) {
-        this.setResourceValue(resource, {
+      if (prebuilt != null) {
+        latestValue = prebuilt.value;
+        const loadable = this.setResourceValue(resource, {
           value: latestValue,
-          isTentative: true,
+          isTentative: !prebuilt.skipFetch,
           nextDependencies: null,
         });
+        if (prebuilt.skipFetch) {
+          return loadable;
+        }
       }
     } else {
       latestValue = state.cache.loadable.latestValue;
@@ -516,7 +519,10 @@ export class Store {
     return state;
   }
 
-  private setResourceValue<T>(resource: Resource<T>, params: SetResourceValueParams<T>): void {
+  private setResourceValue<T>(
+    resource: Resource<T>,
+    params: SetResourceValueParams<T>,
+  ): LoadableValue<T> {
     resource.setResult(params.value, { get: this.getValue, set: this.setValue }, this.context);
     const state = this.getResourceState(resource);
     const loadable = loadableValue(params.value);
@@ -528,6 +534,7 @@ export class Store {
       state.dependencies = params.nextDependencies;
     }
     state.resourceResultChangeListeners.forEach((f) => f({ result: loadable }));
+    return loadable;
   }
 
   private setResourceError<T>(resource: Resource<T>, error: unknown): void {

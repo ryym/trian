@@ -11,6 +11,7 @@ export interface ResourceConfig<T> {
 
 export interface PrebuiltResult<T> {
   readonly value: T;
+  readonly skipFetch?: boolean;
 }
 
 type Get = <T>(gettable: Block<T> | Selector<T>) => T;
