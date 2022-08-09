@@ -424,7 +424,8 @@ export class Store {
 
     let latestValue: T | undefined = undefined;
     if (state.cache.loadable == null) {
-      latestValue = resource.prebuild({ get: this.getValue }, this.context);
+      const prebuilt = resource.prebuild({ get: this.getValue }, this.context);
+      latestValue = prebuilt?.value;
       if (latestValue != null) {
         this.setResourceValue(resource, {
           value: latestValue,

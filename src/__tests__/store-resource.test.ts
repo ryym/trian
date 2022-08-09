@@ -262,7 +262,7 @@ describe("Resource and Store", () => {
         const numValue = block({ default: () => 5 });
         const minusValue = block({ default: () => 0 });
         const squareValue = resource({
-          prebuild: () => 9,
+          prebuild: () => ({ value: 9 }),
           fetch: async (p) => {
             const n = p.get(numValue);
             return n * n;

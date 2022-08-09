@@ -2,11 +2,15 @@ import { Block } from "./block";
 import { Context } from "./context";
 import { Selector } from "./selector";
 
-export interface ResourceConfig<V> {
+export interface ResourceConfig<T> {
   readonly name?: string;
-  readonly fetch: (p: ResourceFetchParams, ctx: Context) => Promise<V>;
-  readonly prebuild?: (p: ResourcePrebuildParams, ctx: Context) => V | undefined;
-  readonly setResult?: (value: V, p: ResourceSetResultParams, ctx: Context) => void;
+  readonly fetch: (p: ResourceFetchParams, ctx: Context) => Promise<T>;
+  readonly prebuild?: (p: ResourcePrebuildParams, ctx: Context) => PrebuiltResult<T> | undefined;
+  readonly setResult?: (value: T, p: ResourceSetResultParams, ctx: Context) => void;
+}
+
+export interface PrebuiltResult<T> {
+  readonly value: T;
 }
 
 type Get = <T>(gettable: Block<T> | Selector<T>) => T;
@@ -27,24 +31,24 @@ export interface ResourceSetResultParams {
   readonly set: Set;
 }
 
-export class Resource<V> {
-  constructor(private readonly config: ResourceConfig<V>) {}
+export class Resource<T> {
+  constructor(private readonly config: ResourceConfig<T>) {}
 
   fetch = this.config.fetch;
 
-  prebuild(p: ResourcePrebuildParams, ctx: Context): V | undefined {
+  prebuild(p: ResourcePrebuildParams, ctx: Context): PrebuiltResult<T> | undefined {
     return this.config.prebuild?.(p, ctx);
   }
 
-  setResult(value: V, p: ResourceSetResultParams, ctx: Context): void {
+  setResult(value: T, p: ResourceSetResultParams, ctx: Context): void {
     this.config.setResult?.(value, p, ctx);
   }
 }
 
-export interface ResourceFetchActionParams<V> {
-  prebuild?: (currentValue: V) => V;
+export interface ResourceFetchActionParams<T> {
+  prebuild?: (currentValue: T) => T;
 }
 
-export const resource = <V>(config: ResourceConfig<V>): Resource<V> => {
+export const resource = <T>(config: ResourceConfig<T>): Resource<T> => {
   return new Resource(config);
 };
