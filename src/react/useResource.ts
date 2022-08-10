@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useSyncExternalStore } from "react";
+import { useCallback, useEffect } from "react";
+import { useSyncExternalStore } from "use-sync-external-store/shim";
 import { useTrianContext } from "./TrianContext";
 import { Resource } from "../resource";
 import { Loadable } from "../loadable";

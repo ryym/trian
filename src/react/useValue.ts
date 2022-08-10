@@ -1,4 +1,5 @@
-import { useSyncExternalStore, useCallback } from "react";
+import { useCallback } from "react";
+import { useSyncExternalStore } from "use-sync-external-store/shim";
 import { useTrianContext } from "./TrianContext";
 import { Block } from "../block";
 import { Selector } from "../selector";
