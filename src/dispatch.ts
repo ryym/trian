@@ -7,7 +7,7 @@ export const createDispatch = (store: Store): Dispatch => {
   }
 
   const params: ThunkParams = {
-    get: store.getAnyValue,
+    get: store.getValue,
     fetch: store.fetchResource,
     refetch: store.refetchResource,
     set: store.setValue,
@@ -19,7 +19,7 @@ export const createDispatch = (store: Store): Dispatch => {
 };
 
 export interface ThunkParams {
-  readonly get: Store["getAnyValue"];
+  readonly get: Store["getValue"];
   readonly fetch: Store["fetchResource"];
   readonly refetch: Store["refetchResource"];
   readonly set: Store["setValue"];

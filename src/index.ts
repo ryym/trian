@@ -7,5 +7,3 @@ export * from "./resourceFamily";
 export * from "./selector";
 export * from "./selectorFamily";
 export * from "./store";
-export * from "./loader";
-export * from "./loaderFamily";
